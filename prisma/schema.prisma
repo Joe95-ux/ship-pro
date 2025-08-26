@@ -12,3 +12,156 @@ datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
+
+// Contact Form Submissions
+model ContactForm {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  message     String
+  serviceType String?
+  status      String   @default("new") // new, contacted, resolved
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("contact_forms")
+}
+
+// Service Categories
+model Service {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  features    String[]
+  price       String?
+  icon        String?
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  shipments   Shipment[]
+
+  @@map("services")
+}
+
+// Main Shipment Model
+model Shipment {
+  id                String           @id @default(auto()) @map("_id") @db.ObjectId
+  trackingNumber    String           @unique
+  status            ShipmentStatus   @default(PENDING)
+  
+  // Sender Information
+  senderName        String
+  senderEmail       String
+  senderPhone       String
+  senderAddress     Address
+  
+  // Receiver Information
+  receiverName      String
+  receiverEmail     String
+  receiverPhone     String
+  receiverAddress   Address
+  
+  // Shipment Details
+  serviceId         String           @db.ObjectId
+  service           Service          @relation(fields: [serviceId], references: [id])
+  weight            Float
+  dimensions        Dimensions
+  value             Float?
+  description       String
+  specialInstructions String?
+  
+  // Pricing
+  estimatedCost     Float
+  finalCost         Float?
+  currency          String           @default("USD")
+  paymentStatus     PaymentStatus    @default(PENDING)
+  
+  // Tracking Information
+  estimatedDelivery DateTime?
+  actualDelivery    DateTime?
+  currentLocation   Location?
+  route             Location[]
+  trackingEvents    TrackingEvent[]
+  
+  // Documents
+  waybillGenerated  Boolean          @default(false)
+  receiptGenerated  Boolean          @default(false)
+  
+  // Admin Information
+  createdBy         String?          // Clerk user ID
+  assignedDriver    String?
+  
+  // Timestamps
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@map("shipments")
+}
+
+// Tracking Events for Real-time Updates
+model TrackingEvent {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  shipmentId  String    @db.ObjectId
+  shipment    Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  
+  status      String    // "Package picked up", "In transit", "Out for delivery", etc.
+  description String?
+  location    Location?
+  timestamp   DateTime  @default(now())
+  
+  createdAt   DateTime  @default(now())
+
+  @@map("tracking_events")
+}
+
+// Embedded Types
+type Address {
+  street      String
+  city        String
+  state       String
+  postalCode  String
+  country     String
+  coordinates Coordinates?
+}
+
+type Coordinates {
+  latitude  Float
+  longitude Float
+}
+
+type Location {
+  name        String
+  address     Address
+  coordinates Coordinates
+  timestamp   DateTime?
+}
+
+type Dimensions {
+  length Float
+  width  Float
+  height Float
+  unit   String @default("cm") // cm, in
+}
+
+// Enums
+enum ShipmentStatus {
+  PENDING
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURNED
+  EXCEPTION
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
