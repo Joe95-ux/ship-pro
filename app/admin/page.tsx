@@ -67,7 +67,7 @@ export default function AdminDashboard() {
         {
           id: "1",
           trackingNumber: "SP123456789",
-          status: "IN_TRANSIT",
+          status: "IN_TRANSIT" as const,
           senderName: "John Doe",
           receiverName: "Jane Smith",
           estimatedDelivery: "2024-01-15T17:00:00Z",
@@ -77,7 +77,7 @@ export default function AdminDashboard() {
         {
           id: "2",
           trackingNumber: "SP123456790",
-          status: "DELIVERED",
+          status: "DELIVERED" as const,
           senderName: "Alice Johnson",
           receiverName: "Bob Wilson",
           estimatedDelivery: "2024-01-14T15:00:00Z",
@@ -87,14 +87,14 @@ export default function AdminDashboard() {
         {
           id: "3",
           trackingNumber: "SP123456791",
-          status: "PENDING",
+          status: "PENDING" as const,
           senderName: "Carol Brown",
           receiverName: "David Lee",
           estimatedDelivery: "2024-01-16T14:00:00Z",
           createdAt: "2024-01-13T11:15:00Z",
           service: { name: "International Shipping" }
         }
-      ]);
+      ] as ShipmentListItem[]);
 
       setContacts([
         {
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
           status: "contacted",
           createdAt: "2024-01-13T10:20:00Z"
         }
-      ]);
+      ] as ContactFormListItem[]);
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -330,21 +330,21 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {shipments.map((shipment) => (
-                        <TableRow key={shipment.id}>
+                      {(shipments as ShipmentListItem[]).map((shipment) => (
+                        <TableRow key={shipment.id as string}>
                           <TableCell className="font-mono font-medium">
-                            {shipment.trackingNumber}
+                            {shipment.trackingNumber as string}
                           </TableCell>
                           <TableCell>
-                            <Badge className={getStatusColor(shipment.status)}>
-                              {shipment.status.replace('_', ' ')}
+                            <Badge className={getStatusColor(shipment.status as string)}>
+                              {(shipment.status as string).replace('_', ' ')}
                             </Badge>
                           </TableCell>
-                          <TableCell>{shipment.senderName}</TableCell>
-                          <TableCell>{shipment.receiverName}</TableCell>
-                          <TableCell>{shipment.service.name}</TableCell>
-                          <TableCell>{formatDate(shipment.estimatedDelivery)}</TableCell>
-                          <TableCell>{formatDate(shipment.createdAt)}</TableCell>
+                          <TableCell>{shipment.senderName as string}</TableCell>
+                          <TableCell>{shipment.receiverName as string}</TableCell>
+                          <TableCell>{(shipment.service as { name: string }).name}</TableCell>
+                          <TableCell>{formatDate(shipment.estimatedDelivery as string)}</TableCell>
+                          <TableCell>{formatDate(shipment.createdAt as string)}</TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
                               <Link href={`/admin/shipments/${shipment.id}`}>

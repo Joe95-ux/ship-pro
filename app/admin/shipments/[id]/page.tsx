@@ -22,14 +22,45 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import Link from "next/link";
 import ReceiptGenerator from "@/components/ReceiptGenerator";
 import WaybillGenerator from "@/components/WaybillGenerator";
-import type { ShipmentWithDetails, ReceiptData, WaybillData } from "@/lib/types";
+import type { ShipmentWithDetails, ReceiptData, WaybillData, Address, Dimensions } from "@/lib/types";
+
+interface MockShipment {
+  id: string;
+  trackingNumber: string;
+  status: string;
+  senderName: string;
+  senderEmail: string;
+  senderPhone: string;
+  senderAddress: Address;
+  receiverName: string;
+  receiverEmail: string;
+  receiverPhone: string;
+  receiverAddress: Address;
+  serviceId: string;
+  service: { name: string; description: string };
+  weight: number;
+  dimensions: Dimensions;
+  value: number;
+  description: string;
+  specialInstructions: string;
+  estimatedCost: number;
+  finalCost: number;
+  currency: string;
+  paymentStatus: string;
+  estimatedDelivery: Date;
+  actualDelivery: Date | null;
+  currentLocation: { name: string; address: Address };
+  trackingEvents: Array<{ id: string; status: string; description: string; timestamp: Date; location?: { name: string; address: Address } }>;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export default function ShipmentDetailsPage() {
   const { user, isLoaded } = useUser();
   const params = useParams();
   const shipmentId = params.id as string;
   
-  const [shipment, setShipment] = useState<ShipmentWithDetails | null>(null);
+  const [shipment, setShipment] = useState<MockShipment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
   const [showWaybill, setShowWaybill] = useState(false);
@@ -52,7 +83,7 @@ export default function ShipmentDetailsPage() {
       setIsLoading(true);
       
       // Mock shipment data for demo
-      const mockShipment: ShipmentWithDetails = {
+      const mockShipment = {
         id: shipmentId,
         trackingNumber: "SP123456789",
         status: "IN_TRANSIT",
@@ -179,7 +210,7 @@ export default function ShipmentDetailsPage() {
     }
   };
 
-  const generateReceiptData = (shipment: ShipmentWithDetails): ReceiptData => {
+  const generateReceiptData = (shipment: MockShipment): ReceiptData => {
     return {
       shipmentId: shipment.id,
       trackingNumber: shipment.trackingNumber,
@@ -201,7 +232,7 @@ export default function ShipmentDetailsPage() {
     };
   };
 
-  const generateWaybillData = (shipment: ShipmentWithDetails): WaybillData => {
+  const generateWaybillData = (shipment: MockShipment): WaybillData => {
     return {
       shipmentId: shipment.id,
       trackingNumber: shipment.trackingNumber,
@@ -243,7 +274,7 @@ export default function ShipmentDetailsPage() {
     if (printWindow) {
       const content = document.getElementById(type);
       if (content) {
-        printWindow.document.write(`
+        const html = `
           <html>
             <head>
               <title>${type === 'receipt' ? 'Shipping Receipt' : 'Waybill'} - ${shipment?.trackingNumber}</title>
@@ -256,7 +287,9 @@ export default function ShipmentDetailsPage() {
               ${content.innerHTML}
             </body>
           </html>
-        `);
+        `;
+        printWindow.document.open();
+        printWindow.document.documentElement.innerHTML = html;
         printWindow.document.close();
         printWindow.print();
       }
@@ -293,7 +326,7 @@ export default function ShipmentDetailsPage() {
     });
   };
 
-  const formatAddress = (address: any) => {
+  const formatAddress = (address: { street: string; city: string; state: string; postalCode: string; country: string }) => {
     return `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
   };
 
@@ -366,7 +399,7 @@ export default function ShipmentDetailsPage() {
                       Receipt
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-5xl max-w-5xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Shipping Receipt</DialogTitle>
                     </DialogHeader>
@@ -385,7 +418,7 @@ export default function ShipmentDetailsPage() {
                       Waybill
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-5xl max-w-5xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Shipping Waybill</DialogTitle>
                     </DialogHeader>
@@ -558,7 +591,7 @@ export default function ShipmentDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {shipment.trackingEvents.map((event, index) => (
+                  {shipment.trackingEvents.map((event: { id: string; status: string; description: string; timestamp: Date; location?: { name: string; address: Address } }, index: number) => (
                     <div key={event.id} className="flex space-x-4">
                       <div className="flex flex-col items-center">
                         <div className="w-3 h-3 bg-red-600 rounded-full"></div>

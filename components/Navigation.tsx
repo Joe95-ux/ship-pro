@@ -26,8 +26,8 @@ export default function Navigation() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 dhl-gradient rounded-lg flex items-center justify-center">
-                <Truck className="h-6 w-6 text-white" />
+              <div className="w-10 h-10 bg-[#FFCC00] rounded-lg flex items-center justify-center">
+                <Truck className="h-6 w-6 text-black" />
               </div>
               <span className="text-xl font-bold text-gray-900">ShipPro</span>
             </Link>
@@ -50,7 +50,7 @@ export default function Navigation() {
           {/* Right Side - Request Quote & User */}
           <div className="hidden md:flex items-center space-x-4">
             <Link href="/contact">
-              <Button className="dhl-gradient text-white hover:opacity-90 transition-opacity">
+              <Button className="bg-[#FFCC00] hover:bg-[#E6B800] text-black font-semibold transition-colors">
                 Request Quote
               </Button>
             </Link>
@@ -86,7 +86,7 @@ export default function Navigation() {
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center space-x-4">
             <Link href="/contact">
-              <Button size="sm" className="dhl-gradient text-white hover:opacity-90">
+              <Button size="sm" className="bg-[#FFCC00] hover:bg-[#E6B800] text-black font-semibold">
                 Quote
               </Button>
             </Link>

@@ -12,6 +12,14 @@ interface ReceiptGeneratorProps {
   onPrint?: () => void;
 }
 
+type AddressType = {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
 export default function ReceiptGenerator({ data, onPrint }: ReceiptGeneratorProps) {
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -23,7 +31,7 @@ export default function ReceiptGenerator({ data, onPrint }: ReceiptGeneratorProp
     });
   };
 
-  const formatAddress = (address: any) => {
+  const formatAddress = (address: AddressType) => {
     return `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
   };
 

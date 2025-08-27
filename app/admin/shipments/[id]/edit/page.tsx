@@ -2,67 +2,69 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { redirect, useRouter } from "next/navigation";
-import { ArrowLeft, Package, MapPin, User, CreditCard } from "lucide-react";
+import { redirect, useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Package, MapPin, User, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
-import type { ShipmentCreateData, Service } from "@/lib/types";
 
-export default function NewShipmentPage() {
+interface EditShipmentData {
+  id: string;
+  trackingNumber: string;
+  status: string;
+  senderName: string;
+  senderEmail: string;
+  senderPhone: string;
+  senderAddress: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+  receiverName: string;
+  receiverEmail: string;
+  receiverPhone: string;
+  receiverAddress: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+  serviceId: string;
+  weight: number;
+  dimensions: {
+    length: number;
+    width: number;
+    height: number;
+    unit: string;
+  };
+  value: number;
+  description: string;
+  specialInstructions: string;
+  estimatedCost: number;
+  finalCost: number;
+  currency: string;
+  paymentStatus: string;
+}
+
+export default function EditShipmentPage() {
   const { user, isLoaded } = useUser();
+  const params = useParams();
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [services, setServices] = useState<Service[]>([]);
+  const shipmentId = params.id as string;
   
-  const [formData, setFormData] = useState<ShipmentCreateData>({
-    // Sender Information
-    senderName: "",
-    senderEmail: "",
-    senderPhone: "",
-    senderAddress: {
-      street: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "USA"
-    },
-
-    // Receiver Information
-    receiverName: "",
-    receiverEmail: "",
-    receiverPhone: "",
-    receiverAddress: {
-      street: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "USA"
-    },
-
-    // Shipment Details
-    serviceId: "",
-    weight: 0,
-    dimensions: {
-      length: 0,
-      width: 0,
-      height: 0,
-      unit: "cm"
-    },
-    value: 0,
-    description: "",
-    specialInstructions: "",
-
-    // Pricing
-    estimatedCost: 0,
-    currency: "USD"
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [formData, setFormData] = useState<EditShipmentData | null>(null);
 
   // Check if user is admin
   useEffect(() => {
@@ -72,119 +74,145 @@ export default function NewShipmentPage() {
   }, [user, isLoaded]);
 
   useEffect(() => {
-    if (user?.publicMetadata.role === 'admin') {
-      loadServices();
+    if (user?.publicMetadata.role === 'admin' && shipmentId) {
+      loadShipmentData();
     }
-  }, [user]);
+  }, [user, shipmentId]);
 
-  const loadServices = async () => {
-    // Mock services data
-    setServices([
-      { 
-        id: "1", 
-        name: "Express Delivery", 
-        description: "Fast delivery service",
-        features: [],
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      { 
-        id: "2", 
-        name: "Standard Delivery", 
-        description: "Regular delivery service",
-        features: [],
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      { 
-        id: "3", 
-        name: "International Shipping", 
-        description: "International delivery service",
-        features: [],
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]);
+  const loadShipmentData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Mock shipment data for demo - in real app, this would be an API call
+      const mockData: EditShipmentData = {
+        id: shipmentId,
+        trackingNumber: "SP123456789",
+        status: "IN_TRANSIT",
+        senderName: "John Doe",
+        senderEmail: "john@example.com",
+        senderPhone: "+1-555-0123",
+        senderAddress: {
+          street: "123 Main St",
+          city: "New York",
+          state: "NY",
+          postalCode: "10001",
+          country: "USA"
+        },
+        receiverName: "Jane Smith",
+        receiverEmail: "jane@example.com",
+        receiverPhone: "+1-555-0456",
+        receiverAddress: {
+          street: "456 Oak Ave",
+          city: "Los Angeles",
+          state: "CA",
+          postalCode: "90210",
+          country: "USA"
+        },
+        serviceId: "1",
+        weight: 5.2,
+        dimensions: {
+          length: 30,
+          width: 20,
+          height: 15,
+          unit: "cm"
+        },
+        value: 150,
+        description: "Electronics - Laptop computer",
+        specialInstructions: "Handle with care - fragile electronics",
+        estimatedCost: 45.99,
+        finalCost: 45.99,
+        currency: "USD",
+        paymentStatus: "PAID"
+      };
+
+      setFormData(mockData);
+    } catch (error) {
+      console.error('Failed to load shipment data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load shipment data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    if (!formData) return;
+    setFormData(prev => ({
+      ...prev!,
+      [field]: value
+    }));
   };
 
   const handleAddressChange = (type: 'senderAddress' | 'receiverAddress', field: string, value: string) => {
+    if (!formData) return;
     setFormData(prev => ({
-      ...prev,
+      ...prev!,
       [type]: {
-        ...prev[type],
+        ...prev![type],
         [field]: value
       }
     }));
   };
 
   const handleDimensionChange = (field: string, value: number) => {
+    if (!formData) return;
     setFormData(prev => ({
-      ...prev,
+      ...prev!,
       dimensions: {
-        ...prev.dimensions,
+        ...prev!.dimensions,
         [field]: value
       }
     }));
   };
 
-  const calculateEstimatedCost = () => {
-    // Simple calculation based on weight and service
-    const baseRate = formData.serviceId === "1" ? 25 : formData.serviceId === "2" ? 15 : 35;
-    const weightRate = formData.weight * 2;
-    const total = baseRate + weightRate;
-    
-    setFormData(prev => ({
-      ...prev,
-      estimatedCost: total
-    }));
-  };
-
-  useEffect(() => {
-    if (formData.weight > 0 && formData.serviceId) {
-      calculateEstimatedCost();
-    }
-  }, [formData.weight, formData.serviceId]);
-
-  const generateTrackingNumber = () => {
-    return `SP${Date.now().toString().slice(-9)}`;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData) return;
+    
     setIsSubmitting(true);
 
     try {
-      // Validate required fields
-      if (!formData.senderName || !formData.receiverName || !formData.serviceId) {
-        throw new Error("Please fill in all required fields");
-      }
-
-      // Generate tracking number
-      const trackingNumber = generateTrackingNumber();
-
-      // Here you would typically make an API call to create the shipment
-      // For demo purposes, we'll simulate the process
+      // In a real app, this would be an API call to update the shipment
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       toast({
-        title: "Shipment Created!",
-        description: `Tracking number: ${trackingNumber}`,
+        title: "Shipment Updated!",
+        description: `Shipment ${formData.trackingNumber} has been updated successfully.`,
       });
 
-      // Redirect to shipment details or back to dashboard
-      router.push('/admin');
+      // Redirect back to shipment details
+      router.push(`/admin/shipments/${shipmentId}`);
 
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create shipment",
+        description: "Failed to update shipment",
         variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'PICKED_UP':
+        return 'bg-blue-100 text-blue-800';
+      case 'IN_TRANSIT':
+        return 'bg-purple-100 text-purple-800';
+      case 'OUT_FOR_DELIVERY':
+        return 'bg-orange-100 text-orange-800';
+      case 'DELIVERED':
+        return 'bg-green-100 text-green-800';
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -199,20 +227,95 @@ export default function NewShipmentPage() {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 animate-spin rounded-full border-4 border-red-200 border-t-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading shipment data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!formData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Shipment Not Found</h2>
+          <p className="text-gray-600 mb-4">The requested shipment could not be found.</p>
+          <Link href="/admin">
+            <Button variant="outline">Back to Dashboard</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/admin" className="inline-flex items-center text-red-600 hover:text-red-700 mb-4">
+          <Link href={`/admin/shipments/${shipmentId}`} className="inline-flex items-center text-red-600 hover:text-red-700 mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            Back to Shipment Details
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Shipment</h1>
-          <p className="text-gray-600">Enter shipment details to create a new shipping order</p>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Shipment</h1>
+              <p className="text-gray-600">Tracking Number: {formData.trackingNumber}</p>
+            </div>
+            <Badge className={getStatusColor(formData.status)}>
+              {formData.status.replace('_', ' ')}
+            </Badge>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Status Update */}
+          <Card className="border-0 logistics-shadow">
+            <CardHeader>
+              <CardTitle>Shipment Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                      <SelectItem value="PICKED_UP">Picked Up</SelectItem>
+                      <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
+                      <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
+                      <SelectItem value="DELIVERED">Delivered</SelectItem>
+                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="paymentStatus">Payment Status</Label>
+                  <Select value={formData.paymentStatus} onValueChange={(value) => handleInputChange('paymentStatus', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                      <SelectItem value="PAID">Paid</SelectItem>
+                      <SelectItem value="FAILED">Failed</SelectItem>
+                      <SelectItem value="REFUNDED">Refunded</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Sender Information */}
           <Card className="border-0 logistics-shadow">
             <CardHeader>
@@ -224,32 +327,29 @@ export default function NewShipmentPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="senderName">Full Name *</Label>
+                  <Label htmlFor="senderName">Full Name</Label>
                   <Input
                     id="senderName"
                     value={formData.senderName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, senderName: e.target.value }))}
-                    required
+                    onChange={(e) => handleInputChange('senderName', e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="senderEmail">Email Address *</Label>
+                  <Label htmlFor="senderEmail">Email Address</Label>
                   <Input
                     id="senderEmail"
                     type="email"
                     value={formData.senderEmail}
-                    onChange={(e) => setFormData(prev => ({ ...prev, senderEmail: e.target.value }))}
-                    required
+                    onChange={(e) => handleInputChange('senderEmail', e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="senderPhone">Phone Number *</Label>
+                  <Label htmlFor="senderPhone">Phone Number</Label>
                   <Input
                     id="senderPhone"
                     type="tel"
                     value={formData.senderPhone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, senderPhone: e.target.value }))}
-                    required
+                    onChange={(e) => handleInputChange('senderPhone', e.target.value)}
                   />
                 </div>
               </div>
@@ -258,43 +358,39 @@ export default function NewShipmentPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <Label htmlFor="senderStreet">Street Address *</Label>
+                  <Label htmlFor="senderStreet">Street Address</Label>
                   <Input
                     id="senderStreet"
                     value={formData.senderAddress.street}
                     onChange={(e) => handleAddressChange('senderAddress', 'street', e.target.value)}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="senderCity">City *</Label>
+                  <Label htmlFor="senderCity">City</Label>
                   <Input
                     id="senderCity"
                     value={formData.senderAddress.city}
                     onChange={(e) => handleAddressChange('senderAddress', 'city', e.target.value)}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="senderState">State *</Label>
+                  <Label htmlFor="senderState">State</Label>
                   <Input
                     id="senderState"
                     value={formData.senderAddress.state}
                     onChange={(e) => handleAddressChange('senderAddress', 'state', e.target.value)}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="senderPostalCode">Postal Code *</Label>
+                  <Label htmlFor="senderPostalCode">Postal Code</Label>
                   <Input
                     id="senderPostalCode"
                     value={formData.senderAddress.postalCode}
                     onChange={(e) => handleAddressChange('senderAddress', 'postalCode', e.target.value)}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="senderCountry">Country *</Label>
+                  <Label htmlFor="senderCountry">Country</Label>
                   <Select 
                     value={formData.senderAddress.country}
                     onValueChange={(value) => handleAddressChange('senderAddress', 'country', value)}
@@ -324,32 +420,29 @@ export default function NewShipmentPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="receiverName">Full Name *</Label>
+                  <Label htmlFor="receiverName">Full Name</Label>
                   <Input
                     id="receiverName"
                     value={formData.receiverName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, receiverName: e.target.value }))}
-                    required
+                    onChange={(e) => handleInputChange('receiverName', e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="receiverEmail">Email Address *</Label>
+                  <Label htmlFor="receiverEmail">Email Address</Label>
                   <Input
                     id="receiverEmail"
                     type="email"
                     value={formData.receiverEmail}
-                    onChange={(e) => setFormData(prev => ({ ...prev, receiverEmail: e.target.value }))}
-                    required
+                    onChange={(e) => handleInputChange('receiverEmail', e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="receiverPhone">Phone Number *</Label>
+                  <Label htmlFor="receiverPhone">Phone Number</Label>
                   <Input
                     id="receiverPhone"
                     type="tel"
                     value={formData.receiverPhone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, receiverPhone: e.target.value }))}
-                    required
+                    onChange={(e) => handleInputChange('receiverPhone', e.target.value)}
                   />
                 </div>
               </div>
@@ -358,43 +451,39 @@ export default function NewShipmentPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <Label htmlFor="receiverStreet">Street Address *</Label>
+                  <Label htmlFor="receiverStreet">Street Address</Label>
                   <Input
                     id="receiverStreet"
                     value={formData.receiverAddress.street}
                     onChange={(e) => handleAddressChange('receiverAddress', 'street', e.target.value)}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="receiverCity">City *</Label>
+                  <Label htmlFor="receiverCity">City</Label>
                   <Input
                     id="receiverCity"
                     value={formData.receiverAddress.city}
                     onChange={(e) => handleAddressChange('receiverAddress', 'city', e.target.value)}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="receiverState">State *</Label>
+                  <Label htmlFor="receiverState">State</Label>
                   <Input
                     id="receiverState"
                     value={formData.receiverAddress.state}
                     onChange={(e) => handleAddressChange('receiverAddress', 'state', e.target.value)}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="receiverPostalCode">Postal Code *</Label>
+                  <Label htmlFor="receiverPostalCode">Postal Code</Label>
                   <Input
                     id="receiverPostalCode"
                     value={formData.receiverAddress.postalCode}
                     onChange={(e) => handleAddressChange('receiverAddress', 'postalCode', e.target.value)}
-                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="receiverCountry">Country *</Label>
+                  <Label htmlFor="receiverCountry">Country</Label>
                   <Select 
                     value={formData.receiverAddress.country}
                     onValueChange={(value) => handleAddressChange('receiverAddress', 'country', value)}
@@ -424,38 +513,29 @@ export default function NewShipmentPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="service">Service Type *</Label>
-                  <Select 
-                    value={formData.serviceId}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, serviceId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select service" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="weight">Weight (lbs) *</Label>
+                  <Label htmlFor="weight">Weight (lbs)</Label>
                   <Input
                     id="weight"
                     type="number"
                     step="0.1"
                     value={formData.weight}
-                    onChange={(e) => setFormData(prev => ({ ...prev, weight: parseFloat(e.target.value) || 0 }))}
-                    required
+                    onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="value">Package Value ($)</Label>
+                  <Input
+                    id="value"
+                    type="number"
+                    step="0.01"
+                    value={formData.value}
+                    onChange={(e) => handleInputChange('value', parseFloat(e.target.value) || 0)}
                   />
                 </div>
               </div>
               
               <div>
-                <Label>Dimensions (cm) *</Label>
+                <Label>Dimensions (cm)</Label>
                 <div className="grid grid-cols-3 gap-4 mt-2">
                   <div>
                     <Input
@@ -463,7 +543,6 @@ export default function NewShipmentPage() {
                       type="number"
                       value={formData.dimensions.length}
                       onChange={(e) => handleDimensionChange('length', parseFloat(e.target.value) || 0)}
-                      required
                     />
                   </div>
                   <div>
@@ -472,7 +551,6 @@ export default function NewShipmentPage() {
                       type="number"
                       value={formData.dimensions.width}
                       onChange={(e) => handleDimensionChange('width', parseFloat(e.target.value) || 0)}
-                      required
                     />
                   </div>
                   <div>
@@ -481,7 +559,6 @@ export default function NewShipmentPage() {
                       type="number"
                       value={formData.dimensions.height}
                       onChange={(e) => handleDimensionChange('height', parseFloat(e.target.value) || 0)}
-                      required
                     />
                   </div>
                 </div>
@@ -489,36 +566,34 @@ export default function NewShipmentPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="value">Package Value ($)</Label>
-                  <Input
-                    id="value"
-                    type="number"
-                    step="0.01"
-                    value={formData.value}
-                    onChange={(e) => setFormData(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div>
                   <Label htmlFor="estimatedCost">Estimated Cost ($)</Label>
                   <Input
                     id="estimatedCost"
                     type="number"
                     step="0.01"
                     value={formData.estimatedCost}
-                    readOnly
-                    className="bg-gray-50"
+                    onChange={(e) => handleInputChange('estimatedCost', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="finalCost">Final Cost ($)</Label>
+                  <Input
+                    id="finalCost"
+                    type="number"
+                    step="0.01"
+                    value={formData.finalCost}
+                    onChange={(e) => handleInputChange('finalCost', parseFloat(e.target.value) || 0)}
                   />
                 </div>
               </div>
               
               <div>
-                <Label htmlFor="description">Package Description *</Label>
+                <Label htmlFor="description">Package Description</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Describe the contents of the package..."
-                  required
                 />
               </div>
               
@@ -527,7 +602,7 @@ export default function NewShipmentPage() {
                 <Textarea
                   id="specialInstructions"
                   value={formData.specialInstructions}
-                  onChange={(e) => setFormData(prev => ({ ...prev, specialInstructions: e.target.value }))}
+                  onChange={(e) => handleInputChange('specialInstructions', e.target.value)}
                   placeholder="Any special handling or delivery instructions..."
                 />
               </div>
@@ -536,7 +611,7 @@ export default function NewShipmentPage() {
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-4">
-            <Link href="/admin">
+            <Link href={`/admin/shipments/${shipmentId}`}>
               <Button variant="outline" type="button">Cancel</Button>
             </Link>
             <Button 
@@ -547,10 +622,13 @@ export default function NewShipmentPage() {
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-                  Creating...
+                  Updating...
                 </>
               ) : (
-                'Create Shipment'
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Update Shipment
+                </>
               )}
             </Button>
           </div>

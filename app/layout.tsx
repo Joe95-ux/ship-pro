@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import Navigation from "@/components/Navigation";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-dm-sans",
 });
 
 export const metadata: Metadata = {
@@ -20,7 +16,11 @@ export const metadata: Metadata = {
   description: "Professional shipping and logistics services with real-time tracking, competitive rates, and reliable delivery worldwide.",
   keywords: "shipping, logistics, freight, delivery, tracking, express shipping, international shipping",
   authors: [{ name: "ShipPro Team" }],
-  viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -32,7 +32,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+          className={`${dmSans.variable} font-sans antialiased min-h-screen flex flex-col bg-white`}
         >
           <Navigation />
           <main className="flex-1">

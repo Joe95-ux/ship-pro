@@ -22,23 +22,27 @@ export default function GoogleMap({ config, className = "", onMapLoad }: GoogleM
         setIsLoading(true);
         setError(null);
 
+        // Check if API key is available
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+        if (!apiKey) {
+          throw new Error('Google Maps API key not found');
+        }
+
         // Initialize Google Maps loader
         const loader = new Loader({
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+          apiKey,
           version: "weekly",
-          libraries: ["maps", "marker"]
+          libraries: ["maps"]
         });
 
-        const { Map } = await loader.importLibrary("maps");
-        const { AdvancedMarkerElement } = await loader.importLibrary("marker");
+        const { Map } = await loader.importLibrary("maps") as google.maps.MapsLibrary;
 
         if (!mapRef.current) return;
 
         // Create map
         const mapInstance = new Map(mapRef.current, {
-          center: config.center,
+          center: { lat: config.center.latitude, lng: config.center.longitude },
           zoom: config.zoom,
-          mapId: "shipping-route-map",
           disableDefaultUI: false,
           zoomControl: true,
           mapTypeControl: false,
@@ -50,17 +54,20 @@ export default function GoogleMap({ config, className = "", onMapLoad }: GoogleM
 
         setMap(mapInstance);
 
-        // Add markers
+        // Add markers using regular Marker (more compatible)
         config.markers.forEach((markerConfig) => {
-          const markerElement = document.createElement('div');
-          markerElement.className = 'custom-marker';
-          markerElement.innerHTML = getMarkerHTML(markerConfig);
-
-          const marker = new AdvancedMarkerElement({
+          const marker = new google.maps.Marker({
+            position: { lat: markerConfig.position.latitude, lng: markerConfig.position.longitude },
             map: mapInstance,
-            position: markerConfig.position,
-            content: markerElement,
-            title: markerConfig.title
+            title: markerConfig.title,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: getMarkerColor(markerConfig.type),
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 2
+            }
           });
 
           // Add info window
@@ -94,7 +101,7 @@ export default function GoogleMap({ config, className = "", onMapLoad }: GoogleM
         if (config.markers.length > 1) {
           const bounds = new google.maps.LatLngBounds();
           config.markers.forEach(marker => {
-            bounds.extend(marker.position);
+            bounds.extend({ lat: marker.position.latitude, lng: marker.position.longitude });
           });
           mapInstance.fitBounds(bounds);
         }
@@ -104,7 +111,7 @@ export default function GoogleMap({ config, className = "", onMapLoad }: GoogleM
 
       } catch (err) {
         console.error('Error loading Google Maps:', err);
-        setError('Failed to load map. Please check your Google Maps API key.');
+        setError('Failed to load map. Please check your Google Maps API key and ensure it has the Maps JavaScript API enabled.');
         setIsLoading(false);
       }
     };
@@ -112,48 +119,14 @@ export default function GoogleMap({ config, className = "", onMapLoad }: GoogleM
     initMap();
   }, [config, onMapLoad]);
 
-  const getMarkerHTML = (marker: MapMarker) => {
+  const getMarkerColor = (type: string) => {
     const colors = {
       origin: '#10B981',      // Green
       destination: '#EF4444', // Red
       current: '#F59E0B',     // Yellow
       waypoint: '#6B7280'     // Gray
     };
-
-    const color = colors[marker.type] || colors.waypoint;
-
-    return `
-      <div style="
-        width: 24px;
-        height: 24px;
-        background-color: ${color};
-        border: 3px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-        position: relative;
-      ">
-        ${marker.type === 'current' ? `
-          <div style="
-            width: 16px;
-            height: 16px;
-            background-color: ${color};
-            border-radius: 50%;
-            position: absolute;
-            top: 1px;
-            left: 1px;
-            animation: pulse 2s infinite;
-          "></div>
-        ` : ''}
-      </div>
-      <style>
-        @keyframes pulse {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.5); opacity: 0.7; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      </style>
-    `;
+    return colors[type as keyof typeof colors] || colors.waypoint;
   };
 
   if (error) {
