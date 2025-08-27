@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import Link from "next/link";
 import ReceiptGenerator from "@/components/ReceiptGenerator";
 import WaybillGenerator from "@/components/WaybillGenerator";
-import type { ShipmentWithDetails, ReceiptData, WaybillData, Address, Dimensions } from "@/lib/types";
+import type { ShipmentWithDetails, ReceiptData, WaybillData, Address, Dimensions, PaymentStatus } from "@/lib/types";
 
 interface MockShipment {
   id: string;
@@ -227,7 +227,7 @@ export default function ShipmentDetailsPage() {
       dimensions: shipment.dimensions,
       cost: shipment.finalCost || shipment.estimatedCost,
       currency: shipment.currency,
-      paymentStatus: shipment.paymentStatus,
+      paymentStatus: shipment.paymentStatus as PaymentStatus,
       createdAt: shipment.createdAt
     };
   };
@@ -271,27 +271,38 @@ export default function ShipmentDetailsPage() {
 
   const handlePrint = (type: 'receipt' | 'waybill') => {
     const printWindow = window.open('', '_blank');
-    if (printWindow) {
+    if (printWindow && shipment) {
       const content = document.getElementById(type);
       if (content) {
         const html = `
+          <!DOCTYPE html>
           <html>
             <head>
-              <title>${type === 'receipt' ? 'Shipping Receipt' : 'Waybill'} - ${shipment?.trackingNumber}</title>
+              <title>${type === 'receipt' ? 'Shipping Receipt' : 'Waybill'} - ${shipment.trackingNumber}</title>
               <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
+                body { 
+                  font-family: Arial, sans-serif; 
+                  margin: 20px; 
+                  line-height: 1.6;
+                }
                 .no-print { display: none !important; }
+                @media print {
+                  body { margin: 0; }
+                .no-print { display: none !important; }
+                }
               </style>
             </head>
             <body>
-              ${content.innerHTML}
+              ${content.outerHTML}
             </body>
           </html>
         `;
-        printWindow.document.open();
-        printWindow.document.documentElement.innerHTML = html;
+        printWindow.document.write(html);
         printWindow.document.close();
+        setTimeout(() => {
         printWindow.print();
+          printWindow.close();
+        }, 500);
       }
     }
   };

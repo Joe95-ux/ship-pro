@@ -12,10 +12,10 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "ShipPro - Professional Shipping & Logistics",
+  title: "Logistica Falcon - Professional Shipping & Logistics",
   description: "Professional shipping and logistics services with real-time tracking, competitive rates, and reliable delivery worldwide.",
   keywords: "shipping, logistics, freight, delivery, tracking, express shipping, international shipping",
-  authors: [{ name: "ShipPro Team" }],
+  authors: [{ name: "Logistica Falcon Team" }],
 };
 
 export const viewport = {
@@ -33,6 +33,7 @@ export default function RootLayout({
       <html lang="en">
         <body
           className={`${dmSans.variable} font-sans antialiased min-h-screen flex flex-col bg-white`}
+          suppressHydrationWarning={true}
         >
           <Navigation />
           <main className="flex-1">
@@ -50,7 +51,7 @@ export default function RootLayout({
                         <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1V8a1 1 0 00-1-1h-3z"/>
                       </svg>
                     </div>
-                    <span className="text-xl font-bold">ShipPro</span>
+                    <span className="text-xl font-bold">Logistica Falcon</span>
                   </div>
                   <p className="text-gray-400 text-sm">
                     Professional shipping and logistics services with real-time tracking and competitive rates.
@@ -80,8 +81,8 @@ export default function RootLayout({
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Contact</h3>
                   <ul className="space-y-2 text-sm text-gray-400">
-                    <li>📞 1-800-SHIP-PRO</li>
-                    <li>📧 info@shippro.com</li>
+                    <li>📞 1-800-LOGISTICA</li>
+                    <li>📧 info@logisticafalcon.com</li>
                     <li>📍 123 Logistics Ave, Ship City, SC 12345</li>
                     <li>🕐 24/7 Customer Support</li>
                   </ul>
@@ -89,7 +90,7 @@ export default function RootLayout({
               </div>
               
               <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-                <p>&copy; 2024 ShipPro. All rights reserved. | Privacy Policy | Terms of Service</p>
+                <p>&copy; 2024 Logistica Falcon. All rights reserved. | Privacy Policy | Terms of Service</p>
               </div>
             </div>
           </footer>

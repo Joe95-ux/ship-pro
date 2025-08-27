@@ -52,6 +52,29 @@ export default function TrackingPage() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
 
+  // Load map when tracking data changes
+  useEffect(() => {
+    console.log('useEffect: trackingData changed:', trackingData);
+    if (trackingData) {
+      console.log('useEffect: Calling loadMap');
+      loadMap();
+      // Set a timeout to ensure map loads or shows placeholder
+      const timeout = setTimeout(() => {
+        if (!mapConfig) {
+          console.log('useEffect: Timeout - calling loadMap again');
+          loadMap();
+        }
+      }, 1000);
+      
+      return () => clearTimeout(timeout);
+    } else {
+      // Reset map config when no tracking data
+      console.log('useEffect: Resetting map config');
+      setMapConfig(null);
+      setMapLoaded(false);
+    }
+  }, [trackingData]);
+
   // Sample tracking data for demonstration
   const sampleTrackingData: TrackingData = {
     trackingNumber: "SP123456789",
@@ -142,7 +165,6 @@ export default function TrackingPage() {
       // For demo purposes, show sample data if tracking number matches pattern
       if (trackingNumber.toUpperCase().includes("SP") || trackingNumber === "123456789") {
         setTrackingData(sampleTrackingData);
-        loadMap();
       } else {
         toast({
           title: "Not Found",
@@ -162,7 +184,12 @@ export default function TrackingPage() {
   };
 
   const loadMap = () => {
-    if (!trackingData) return;
+    if (!trackingData) {
+      console.log('loadMap: No tracking data available');
+      return;
+    }
+
+    console.log('loadMap: Creating map config with tracking data:', trackingData);
 
     // Create map configuration based on tracking data
     const config: MapConfig = {
@@ -192,12 +219,13 @@ export default function TrackingPage() {
         }
       ],
       polyline: [
-        { lat: 40.7128, lng: -74.0060 }, // New York
-        { lat: 41.8781, lng: -87.6298 }, // Chicago
-        { lat: 34.0522, lng: -118.2437 }  // Los Angeles
+        { latitude: 40.7128, longitude: -74.0060 }, // New York
+        { latitude: 41.8781, longitude: -87.6298 }, // Chicago
+        { latitude: 34.0522, longitude: -118.2437 }  // Los Angeles
       ]
     };
 
+    console.log('loadMap: Setting map config:', config);
     setMapConfig(config);
     setMapLoaded(true);
   };
@@ -256,7 +284,7 @@ export default function TrackingPage() {
               Track Your <span className="text-red-600">Package</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Get real-time updates on your shipment's location and delivery status with our advanced tracking system.
+              Get real-time updates on your shipment&apos;s location and delivery status with our advanced tracking system.
             </p>
             
             {/* Tracking Input */}
@@ -352,15 +380,26 @@ export default function TrackingPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
-                    {mapConfig && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
-                      <GoogleMap config={mapConfig} className="w-full h-full" />
-                    ) : mapConfig ? (
-                      <MapPlaceholder config={mapConfig} className="w-full h-full" />
+                    {/* Debug Panel - Remove this after fixing */}
+                    {/* <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                      <strong>Debug Info:</strong><br/>
+                      API Key: {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? '✅ Found' : '❌ Missing'}<br/>
+                      Map Config: {mapConfig ? '✅ Loaded' : '❌ Not loaded'}<br/>
+                      Tracking Data: {trackingData ? '✅ Available' : '❌ Not available'}
+                    </div> */}
+                    
+                    {mapConfig ? (
+                      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                        <GoogleMap config={mapConfig} className="w-full h-full" />
+                      ) : (
+                        <MapPlaceholder config={mapConfig} className="w-full h-full" />
+                      )
                     ) : (
                       <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
                         <div className="text-center">
                           <div className="w-12 h-12 animate-spin rounded-full border-4 border-red-200 border-t-red-600 mx-auto mb-4"></div>
                           <p className="text-gray-500">Loading route map...</p>
+                          <p className="text-xs text-gray-400 mt-2">If this persists, check your Google Maps API key</p>
                         </div>
                       </div>
                     )}
@@ -454,7 +493,7 @@ export default function TrackingPage() {
         <section className="py-16 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Don't have a tracking number?
+              Don&apos;t have a tracking number?
             </h2>
             <p className="text-gray-600 mb-8">
               Use one of these sample tracking numbers to see our tracking system in action

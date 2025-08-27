@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { auth } from '@clerk/nextjs/server';
-
-const prisma = new PrismaClient();
+import { db } from '@/lib/db';
 
 // Get all shipments (with filtering and pagination)
 export async function GET(request: NextRequest) {
@@ -26,10 +25,10 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.ShipmentWhereInput = {};
     
     if (status && status !== 'all') {
-      where.status = status;
+      where.status = status as Prisma.EnumShipmentStatusFilter;
     }
     
     if (search) {
@@ -48,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     // Get shipments with pagination
     const [shipments, total] = await Promise.all([
-      prisma.shipment.findMany({
+      db.shipment.findMany({
         where,
         include: {
           service: true,
@@ -59,7 +58,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.shipment.count({ where }),
+      db.shipment.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -80,8 +79,6 @@ export async function GET(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -130,7 +127,7 @@ export async function POST(request: NextRequest) {
     const trackingNumber = `SP${Date.now().toString().slice(-9)}`;
 
     // Create shipment
-    const shipment = await prisma.shipment.create({
+    const shipment = await db.shipment.create({
       data: {
         trackingNumber,
         status: 'PENDING',
@@ -160,7 +157,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Create initial tracking event
-    await prisma.trackingEvent.create({
+    await db.trackingEvent.create({
       data: {
         shipmentId: shipment.id,
         status: 'Shipment created',
@@ -183,7 +180,5 @@ export async function POST(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

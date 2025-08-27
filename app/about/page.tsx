@@ -30,7 +30,7 @@ export default function AboutPage() {
     {
       name: "Sarah Johnson",
       role: "CEO & Founder",
-      description: "15+ years in logistics and supply chain management, leading ShipPro's vision for revolutionary shipping solutions."
+      description: "15+ years in logistics and supply chain management, leading Logistica Falcon's vision for revolutionary shipping solutions."
     },
     {
       name: "Michael Chen",
@@ -50,7 +50,7 @@ export default function AboutPage() {
   ];
 
   const milestones = [
-    { year: "2018", event: "ShipPro Founded", description: "Started with a vision to revolutionize shipping" },
+    { year: "2018", event: "Logistica Falcon Founded", description: "Started with a vision to revolutionize shipping" },
     { year: "2019", event: "First 1000 Customers", description: "Reached our first major milestone" },
     { year: "2020", event: "International Expansion", description: "Extended services to 20+ countries" },
     { year: "2021", event: "500K Packages", description: "Delivered half a million packages" },
@@ -73,13 +73,13 @@ export default function AboutPage() {
             </div>
             
             <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-              About <span className="text-red-600">ShipPro</span>
+              About <span className="text-red-600">Logistica Falcon</span>
             </h1>
             
             <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-              Founded in 2018, ShipPro has revolutionized the shipping and logistics industry with 
+              Founded in 2018, Logistica Falcon has revolutionized the shipping and logistics industry with 
               innovative technology, exceptional customer service, and a commitment to reliability. 
-              We're more than just a shipping company – we're your trusted logistics partner.
+              We&apos;re more than just a shipping company – we&apos;re your trusted logistics partner.
             </p>
           </div>
         </div>
@@ -146,7 +146,7 @@ export default function AboutPage() {
             </div>
             
             <div className="bg-white rounded-2xl logistics-shadow p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Why Choose ShipPro?</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Why Choose Logistica Falcon?</h3>
               <ul className="space-y-4">
                 <li className="flex items-start space-x-3">
                   <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -255,7 +255,7 @@ export default function AboutPage() {
               Our Journey
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Key milestones in ShipPro's growth and evolution
+              Key milestones in Logistica Falcon&apos;s growth and evolution
             </p>
           </div>
           
@@ -295,10 +295,10 @@ export default function AboutPage() {
       <section className="py-20 dhl-gradient">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-            Ready to Experience the ShipPro Difference?
+            Ready to Experience the Logistica Falcon Difference?
           </h2>
           <p className="text-xl text-red-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of businesses who trust ShipPro for their shipping and logistics needs.
+            Join thousands of businesses who trust Logistica Falcon for their shipping and logistics needs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="/contact" className="inline-block">

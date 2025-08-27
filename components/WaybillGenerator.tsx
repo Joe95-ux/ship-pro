@@ -11,6 +11,14 @@ interface WaybillGeneratorProps {
   onPrint?: () => void;
 }
 
+type AddressType = {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
 export default function WaybillGenerator({ data, onPrint }: WaybillGeneratorProps) {
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -20,7 +28,7 @@ export default function WaybillGenerator({ data, onPrint }: WaybillGeneratorProp
     });
   };
 
-  const formatAddress = (address: any) => {
+  const formatAddress = (address: AddressType) => {
     return `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
   };
 
@@ -35,7 +43,7 @@ export default function WaybillGenerator({ data, onPrint }: WaybillGeneratorProp
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-white" id="waybill">
+    <div className="max-w-5xl mx-auto bg-white" id="waybill">
       {/* Header */}
       <div className="border-2 border-black p-4 mb-4">
         <div className="flex justify-between items-start">
@@ -44,7 +52,7 @@ export default function WaybillGenerator({ data, onPrint }: WaybillGeneratorProp
               <Truck className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">ShipPro</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Logistica Falcon</h1>
               <p className="text-sm text-gray-600">Professional Shipping & Logistics</p>
               <p className="text-xs text-gray-500">123 Logistics Ave, Ship City, SC 12345</p>
             </div>
@@ -169,7 +177,7 @@ export default function WaybillGenerator({ data, onPrint }: WaybillGeneratorProp
           </div>
           <p className="font-mono text-xl font-bold">{data.trackingNumber}</p>
           <p className="text-xs text-gray-600 mt-2">
-            Track online at: shippro.com/tracking
+            Track online at: logisticafalcon.com/tracking
           </p>
         </div>
       </div>
@@ -181,11 +189,11 @@ export default function WaybillGenerator({ data, onPrint }: WaybillGeneratorProp
             <h3 className="font-bold text-sm">TERMS AND CONDITIONS</h3>
           </div>
           <div className="p-3 text-xs space-y-1">
-            <p>• Shipment is subject to ShipPro's standard terms and conditions.</p>
+            <p>• Shipment is subject to Logistica Falcon&apos;s standard terms and conditions.</p>
             <p>• Delivery times are estimates and not guaranteed.</p>
             <p>• Insurance claims must be filed within 30 days.</p>
             <p>• Shipper certifies that the contents are properly described and classified.</p>
-            <p>• ShipPro's liability is limited as per standard shipping terms.</p>
+            <p>• Logistica Falcon&apos;s liability is limited as per standard shipping terms.</p>
           </div>
         </div>
 
@@ -226,7 +234,7 @@ export default function WaybillGenerator({ data, onPrint }: WaybillGeneratorProp
       {/* Footer */}
       <div className="text-center text-xs text-gray-500 border-t pt-4">
         <p>This waybill was generated on {formatDate(new Date())}</p>
-        <p>For customer service: 1-800-SHIP-PRO | support@shippro.com</p>
+        <p>For customer service: 1-800-LOGISTICA | support@logisticafalcon.com</p>
       </div>
 
       {/* Print Button */}

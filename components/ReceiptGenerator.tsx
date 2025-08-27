@@ -49,7 +49,7 @@ export default function ReceiptGenerator({ data, onPrint }: ReceiptGeneratorProp
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white" id="receipt">
+    <div className="max-w-5xl mx-auto bg-white" id="receipt">
       {/* Header */}
       <div className="text-center mb-8 border-b pb-6">
         <div className="flex items-center justify-center space-x-2 mb-4">
@@ -57,7 +57,7 @@ export default function ReceiptGenerator({ data, onPrint }: ReceiptGeneratorProp
             <Truck className="h-6 w-6 text-white" />
           </div>
           <div className="text-left">
-            <h1 className="text-2xl font-bold text-gray-900">ShipPro</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Logistica Falcon</h1>
             <p className="text-sm text-gray-600">Professional Shipping Solutions</p>
           </div>
         </div>
@@ -194,15 +194,15 @@ export default function ReceiptGenerator({ data, onPrint }: ReceiptGeneratorProp
             <li>• This receipt serves as proof of payment for shipping services.</li>
             <li>• Delivery times are estimates and not guaranteed.</li>
             <li>• Insurance claims must be filed within 30 days of delivery.</li>
-            <li>• For questions or concerns, contact customer service at 1-800-SHIP-PRO.</li>
-            <li>• Track your package at shippro.com/tracking using tracking number {data.trackingNumber}.</li>
+            <li>• For questions or concerns, contact customer service at 1-800-LOGISTICA.</li>
+            <li>• Track your package at logisticafalcon.com/tracking using tracking number {data.trackingNumber}.</li>
           </ul>
         </div>
 
         {/* Footer */}
         <div className="text-center text-xs text-gray-500 border-t pt-4">
-          <p>ShipPro Inc. | 123 Logistics Ave, Ship City, SC 12345</p>
-          <p>Phone: 1-800-SHIP-PRO | Email: support@shippro.com</p>
+          <p>Logistica Falcon Inc. | 123 Logistics Ave, Ship City, SC 12345</p>
+          <p>Phone: 1-800-LOGISTICA | Email: support@logisticafalcon.com</p>
           <p>This receipt was generated on {formatDate(new Date())}</p>
         </div>
       </div>

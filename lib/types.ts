@@ -1,5 +1,5 @@
 // Prisma-generated types
-export type {
+import type {
   Shipment,
   Service,
   ContactForm,
@@ -7,6 +7,15 @@ export type {
   ShipmentStatus,
   PaymentStatus,
 } from '@prisma/client';
+
+export type {
+  Shipment,
+  Service,
+  ContactForm,
+  TrackingEvent,
+  ShipmentStatus,
+  PaymentStatus,
+};
 
 // Custom interfaces for API responses and form data
 export interface Address {
@@ -173,7 +182,7 @@ export interface PaginatedResponse<T> {
 }
 
 // API Response Types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -199,7 +208,7 @@ export interface TableColumn<T> {
   key: keyof T;
   label: string;
   sortable?: boolean;
-  render?: (value: any, item: T) => React.ReactNode;
+  render?: (value: unknown, item: T) => React.ReactNode;
 }
 
 export interface TableSort {
@@ -298,7 +307,7 @@ export interface MapMarker {
 // Search Types
 export interface SearchParams {
   query: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
   sort?: TableSort;
   pagination?: PaginationParams;
 }

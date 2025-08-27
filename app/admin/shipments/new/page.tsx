@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { redirect, useRouter } from "next/navigation";
 import { ArrowLeft, Package, MapPin, User, CreditCard } from "lucide-react";
@@ -78,36 +78,21 @@ export default function NewShipmentPage() {
   }, [user]);
 
   const loadServices = async () => {
-    // Mock services data
-    setServices([
-      { 
-        id: "1", 
-        name: "Express Delivery", 
-        description: "Fast delivery service",
-        features: [],
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      { 
-        id: "2", 
-        name: "Standard Delivery", 
-        description: "Regular delivery service",
-        features: [],
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      { 
-        id: "3", 
-        name: "International Shipping", 
-        description: "International delivery service",
-        features: [],
-        active: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+    try {
+      const response = await fetch('/api/services');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Loaded services:', data.data);
+        setServices(data.data);
+      } else {
+        console.error('Failed to load services');
+        // Fallback to empty array if API fails
+        setServices([]);
       }
-    ]);
+    } catch (error) {
+      console.error('Error loading services:', error);
+      setServices([]);
+    }
   };
 
   const handleAddressChange = (type: 'senderAddress' | 'receiverAddress', field: string, value: string) => {
@@ -130,27 +115,30 @@ export default function NewShipmentPage() {
     }));
   };
 
-  const calculateEstimatedCost = () => {
-    // Simple calculation based on weight and service
-    const baseRate = formData.serviceId === "1" ? 25 : formData.serviceId === "2" ? 15 : 35;
-    const weightRate = formData.weight * 2;
-    const total = baseRate + weightRate;
+  const calculateEstimatedCost = useCallback(() => {
+    // Find the selected service
+    const selectedService = services.find(service => service.id === formData.serviceId);
     
-    setFormData(prev => ({
-      ...prev,
-      estimatedCost: total
-    }));
-  };
+    if (selectedService && formData.weight > 0) {
+      // Extract base rate from service price (remove $ and convert to number)
+      const baseRate = parseFloat(selectedService.price?.replace('$', '') || '25');
+      const weightRate = formData.weight * 2;
+      const total = baseRate + weightRate;
+      
+      setFormData(prev => ({
+        ...prev,
+        estimatedCost: total
+      }));
+    }
+  }, [formData.weight, formData.serviceId, services]);
 
   useEffect(() => {
     if (formData.weight > 0 && formData.serviceId) {
       calculateEstimatedCost();
     }
-  }, [formData.weight, formData.serviceId]);
+  }, [calculateEstimatedCost]);
 
-  const generateTrackingNumber = () => {
-    return `SP${Date.now().toString().slice(-9)}`;
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,12 +150,31 @@ export default function NewShipmentPage() {
         throw new Error("Please fill in all required fields");
       }
 
-      // Generate tracking number
-      const trackingNumber = generateTrackingNumber();
+      // Prepare shipment data
+      const shipmentData = {
+        ...formData,
+        estimatedDelivery: formData.estimatedDelivery || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+      };
 
-      // Here you would typically make an API call to create the shipment
-      // For demo purposes, we'll simulate the process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('Submitting shipment data:', shipmentData);
+      console.log('Selected serviceId:', formData.serviceId);
+
+      // Make API call to create shipment
+      const response = await fetch('/api/shipments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(shipmentData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create shipment');
+      }
+
+      const result = await response.json();
+      const trackingNumber = result.shipment.trackingNumber;
 
       toast({
         title: "Shipment Created!",
@@ -222,31 +229,34 @@ export default function NewShipmentPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="senderName">Full Name *</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="form-group">
+                  <Label htmlFor="senderName" className="form-label">Full Name *</Label>
                   <Input
                     id="senderName"
+                    className="form-input"
                     value={formData.senderName}
                     onChange={(e) => setFormData(prev => ({ ...prev, senderName: e.target.value }))}
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="senderEmail">Email Address *</Label>
+                <div className="form-group">
+                  <Label htmlFor="senderEmail" className="form-label">Email Address *</Label>
                   <Input
                     id="senderEmail"
                     type="email"
+                    className="form-input"
                     value={formData.senderEmail}
                     onChange={(e) => setFormData(prev => ({ ...prev, senderEmail: e.target.value }))}
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="senderPhone">Phone Number *</Label>
+                <div className="form-group">
+                  <Label htmlFor="senderPhone" className="form-label">Phone Number *</Label>
                   <Input
                     id="senderPhone"
                     type="tel"
+                    className="form-input"
                     value={formData.senderPhone}
                     onChange={(e) => setFormData(prev => ({ ...prev, senderPhone: e.target.value }))}
                     required
@@ -256,50 +266,54 @@ export default function NewShipmentPage() {
               
               <Separator />
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <Label htmlFor="senderStreet">Street Address *</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2 form-group">
+                  <Label htmlFor="senderStreet" className="form-label">Street Address *</Label>
                   <Input
                     id="senderStreet"
+                    className="form-input"
                     value={formData.senderAddress.street}
                     onChange={(e) => handleAddressChange('senderAddress', 'street', e.target.value)}
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="senderCity">City *</Label>
+                <div className="form-group">
+                  <Label htmlFor="senderCity" className="form-label">City *</Label>
                   <Input
                     id="senderCity"
+                    className="form-input"
                     value={formData.senderAddress.city}
                     onChange={(e) => handleAddressChange('senderAddress', 'city', e.target.value)}
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="senderState">State *</Label>
+                <div className="form-group">
+                  <Label htmlFor="senderState" className="form-label">State *</Label>
                   <Input
                     id="senderState"
+                    className="form-input"
                     value={formData.senderAddress.state}
                     onChange={(e) => handleAddressChange('senderAddress', 'state', e.target.value)}
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="senderPostalCode">Postal Code *</Label>
+                <div className="form-group">
+                  <Label htmlFor="senderPostalCode" className="form-label">Postal Code *</Label>
                   <Input
                     id="senderPostalCode"
+                    className="form-input"
                     value={formData.senderAddress.postalCode}
                     onChange={(e) => handleAddressChange('senderAddress', 'postalCode', e.target.value)}
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="senderCountry">Country *</Label>
+                <div className="form-group">
+                  <Label htmlFor="senderCountry" className="form-label">Country *</Label>
                   <Select 
                     value={formData.senderAddress.country}
                     onValueChange={(value) => handleAddressChange('senderAddress', 'country', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="form-input">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -323,8 +337,8 @@ export default function NewShipmentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="receiverName">Full Name *</Label>
+                <div className="form-group">
+                  <Label htmlFor="receiverName" className="form-label">Full Name *</Label>
                   <Input
                     id="receiverName"
                     value={formData.receiverName}
@@ -332,8 +346,8 @@ export default function NewShipmentPage() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="receiverEmail">Email Address *</Label>
+                <div className="form-group">
+                  <Label htmlFor="receiverEmail" className="form-label">Email Address *</Label>
                   <Input
                     id="receiverEmail"
                     type="email"
@@ -342,7 +356,7 @@ export default function NewShipmentPage() {
                     required
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="receiverPhone">Phone Number *</Label>
                   <Input
                     id="receiverPhone"
@@ -357,8 +371,8 @@ export default function NewShipmentPage() {
               <Separator />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <Label htmlFor="receiverStreet">Street Address *</Label>
+                <div className="md:col-span-2 form-group">
+                  <Label htmlFor="receiverStreet" className="form-label">Street Address *</Label>
                   <Input
                     id="receiverStreet"
                     value={formData.receiverAddress.street}
@@ -366,8 +380,8 @@ export default function NewShipmentPage() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="receiverCity">City *</Label>
+                <div className="form-group">
+                  <Label htmlFor="receiverCity" className="form-label">City *</Label>
                   <Input
                     id="receiverCity"
                     value={formData.receiverAddress.city}
@@ -375,8 +389,8 @@ export default function NewShipmentPage() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="receiverState">State *</Label>
+                <div className="form-group">
+                  <Label htmlFor="receiverState" className="form-label">State *</Label>
                   <Input
                     id="receiverState"
                     value={formData.receiverAddress.state}
@@ -384,8 +398,8 @@ export default function NewShipmentPage() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="receiverPostalCode">Postal Code *</Label>
+                <div className="form-group">
+                  <Label htmlFor="receiverPostalCode" className="form-label">Postal Code *</Label>
                   <Input
                     id="receiverPostalCode"
                     value={formData.receiverAddress.postalCode}
@@ -393,8 +407,8 @@ export default function NewShipmentPage() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="receiverCountry">Country *</Label>
+                <div className="form-group">
+                  <Label htmlFor="receiverCountry" className="form-label">Country *</Label>
                   <Select 
                     value={formData.receiverAddress.country}
                     onValueChange={(value) => handleAddressChange('receiverAddress', 'country', value)}
@@ -423,8 +437,8 @@ export default function NewShipmentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="service">Service Type *</Label>
+                <div className="form-group">
+                  <Label htmlFor="service" className="form-label">Service Type *</Label>
                   <Select 
                     value={formData.serviceId}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, serviceId: value }))}
@@ -441,8 +455,8 @@ export default function NewShipmentPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label htmlFor="weight">Weight (lbs) *</Label>
+                <div className="form-group">
+                  <Label htmlFor="weight" className="form-label">Weight (lbs) *</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -454,8 +468,8 @@ export default function NewShipmentPage() {
                 </div>
               </div>
               
-              <div>
-                <Label>Dimensions (cm) *</Label>
+              <div className="form-group">
+                <Label className="form-label">Dimensions (cm) *</Label>
                 <div className="grid grid-cols-3 gap-4 mt-2">
                   <div>
                     <Input
@@ -488,8 +502,8 @@ export default function NewShipmentPage() {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="value">Package Value ($)</Label>
+                <div className="form-group">
+                  <Label htmlFor="value" className="form-label">Package Value ($)</Label>
                   <Input
                     id="value"
                     type="number"
@@ -498,8 +512,8 @@ export default function NewShipmentPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="estimatedCost">Estimated Cost ($)</Label>
+                <div className="form-group"   >
+                  <Label htmlFor="estimatedCost" className="form-label">Estimated Cost ($)</Label>
                   <Input
                     id="estimatedCost"
                     type="number"
@@ -511,8 +525,8 @@ export default function NewShipmentPage() {
                 </div>
               </div>
               
-              <div>
-                <Label htmlFor="description">Package Description *</Label>
+              <div className="form-group">
+                <Label htmlFor="description" className="form-label">Package Description *</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
@@ -522,8 +536,8 @@ export default function NewShipmentPage() {
                 />
               </div>
               
-              <div>
-                <Label htmlFor="specialInstructions">Special Instructions</Label>
+              <div className="form-group">
+                <Label htmlFor="specialInstructions" className="form-label">Special Instructions</Label>
                 <Textarea
                   id="specialInstructions"
                   value={formData.specialInstructions}

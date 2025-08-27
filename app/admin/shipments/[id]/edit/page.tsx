@@ -282,7 +282,7 @@ export default function EditShipmentPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="form-group">
                   <Label htmlFor="status">Status</Label>
                   <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
                     <SelectTrigger>
@@ -298,7 +298,7 @@ export default function EditShipmentPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="paymentStatus">Payment Status</Label>
                   <Select value={formData.paymentStatus} onValueChange={(value) => handleInputChange('paymentStatus', value)}>
                     <SelectTrigger>
@@ -326,7 +326,7 @@ export default function EditShipmentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="form-group">
                   <Label htmlFor="senderName">Full Name</Label>
                   <Input
                     id="senderName"
@@ -334,7 +334,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleInputChange('senderName', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="senderEmail">Email Address</Label>
                   <Input
                     id="senderEmail"
@@ -343,7 +343,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleInputChange('senderEmail', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="senderPhone">Phone Number</Label>
                   <Input
                     id="senderPhone"
@@ -357,7 +357,7 @@ export default function EditShipmentPage() {
               <Separator />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 form-group">
                   <Label htmlFor="senderStreet">Street Address</Label>
                   <Input
                     id="senderStreet"
@@ -365,7 +365,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleAddressChange('senderAddress', 'street', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="senderCity">City</Label>
                   <Input
                     id="senderCity"
@@ -373,7 +373,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleAddressChange('senderAddress', 'city', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="senderState">State</Label>
                   <Input
                     id="senderState"
@@ -381,7 +381,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleAddressChange('senderAddress', 'state', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="senderPostalCode">Postal Code</Label>
                   <Input
                     id="senderPostalCode"
@@ -389,7 +389,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleAddressChange('senderAddress', 'postalCode', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="senderCountry">Country</Label>
                   <Select 
                     value={formData.senderAddress.country}
@@ -419,7 +419,7 @@ export default function EditShipmentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="form-group">
                   <Label htmlFor="receiverName">Full Name</Label>
                   <Input
                     id="receiverName"
@@ -427,7 +427,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleInputChange('receiverName', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="receiverEmail">Email Address</Label>
                   <Input
                     id="receiverEmail"
@@ -436,7 +436,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleInputChange('receiverEmail', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="receiverPhone">Phone Number</Label>
                   <Input
                     id="receiverPhone"
@@ -450,7 +450,7 @@ export default function EditShipmentPage() {
               <Separator />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 form-group">
                   <Label htmlFor="receiverStreet">Street Address</Label>
                   <Input
                     id="receiverStreet"
@@ -458,7 +458,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleAddressChange('receiverAddress', 'street', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="receiverCity">City</Label>
                   <Input
                     id="receiverCity"
@@ -466,7 +466,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleAddressChange('receiverAddress', 'city', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="receiverState">State</Label>
                   <Input
                     id="receiverState"
@@ -474,7 +474,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleAddressChange('receiverAddress', 'state', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="receiverPostalCode">Postal Code</Label>
                   <Input
                     id="receiverPostalCode"
@@ -482,7 +482,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleAddressChange('receiverAddress', 'postalCode', e.target.value)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="receiverCountry">Country</Label>
                   <Select 
                     value={formData.receiverAddress.country}
@@ -512,7 +512,7 @@ export default function EditShipmentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="form-group">
                   <Label htmlFor="weight">Weight (lbs)</Label>
                   <Input
                     id="weight"
@@ -522,7 +522,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="value">Package Value ($)</Label>
                   <Input
                     id="value"
@@ -534,10 +534,10 @@ export default function EditShipmentPage() {
                 </div>
               </div>
               
-              <div>
+              <div className="form-group">
                 <Label>Dimensions (cm)</Label>
                 <div className="grid grid-cols-3 gap-4 mt-2">
-                  <div>
+                  <div className="form-group">
                     <Input
                       placeholder="Length"
                       type="number"
@@ -545,7 +545,7 @@ export default function EditShipmentPage() {
                       onChange={(e) => handleDimensionChange('length', parseFloat(e.target.value) || 0)}
                     />
                   </div>
-                  <div>
+                  <div className="form-group">
                     <Input
                       placeholder="Width"
                       type="number"
@@ -553,7 +553,7 @@ export default function EditShipmentPage() {
                       onChange={(e) => handleDimensionChange('width', parseFloat(e.target.value) || 0)}
                     />
                   </div>
-                  <div>
+                  <div className="form-group">
                     <Input
                       placeholder="Height"
                       type="number"
@@ -565,7 +565,7 @@ export default function EditShipmentPage() {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="form-group">
                   <Label htmlFor="estimatedCost">Estimated Cost ($)</Label>
                   <Input
                     id="estimatedCost"
@@ -575,7 +575,7 @@ export default function EditShipmentPage() {
                     onChange={(e) => handleInputChange('estimatedCost', parseFloat(e.target.value) || 0)}
                   />
                 </div>
-                <div>
+                <div className="form-group">
                   <Label htmlFor="finalCost">Final Cost ($)</Label>
                   <Input
                     id="finalCost"
@@ -587,7 +587,7 @@ export default function EditShipmentPage() {
                 </div>
               </div>
               
-              <div>
+              <div className="form-group">
                 <Label htmlFor="description">Package Description</Label>
                 <Textarea
                   id="description"
@@ -597,7 +597,7 @@ export default function EditShipmentPage() {
                 />
               </div>
               
-              <div>
+              <div className="form-group">
                 <Label htmlFor="specialInstructions">Special Instructions</Label>
                 <Textarea
                   id="specialInstructions"

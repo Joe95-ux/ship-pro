@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { 
@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
-import type { DashboardStats, ShipmentListItem, ContactFormListItem } from "@/lib/types";
+import type { DashboardStats, ShipmentListItem, ContactFormListItem, ShipmentWithDetails } from "@/lib/types";
 
 export default function AdminDashboard() {
   const { user, isLoaded } = useUser();
@@ -42,87 +42,111 @@ export default function AdminDashboard() {
     }
   }, [user, isLoaded]);
 
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      let loadedShipments: (ShipmentWithDetails | ShipmentListItem)[] = [];
+      let loadedContacts: ContactFormListItem[] = [];
+      
+      // Load shipments from API
+      const shipmentsResponse = await fetch('/api/shipments?limit=50');
+      if (shipmentsResponse.ok) {
+        const shipmentsData = await shipmentsResponse.json();
+        loadedShipments = shipmentsData.data || [];
+        setShipments((loadedShipments as ShipmentWithDetails[]).map((shipment) => ({
+          id: shipment.id,
+          trackingNumber: shipment.trackingNumber,
+          status: shipment.status,
+          senderName: shipment.senderName,
+          receiverName: shipment.receiverName,
+          estimatedDelivery: new Date(shipment.estimatedDelivery || shipment.createdAt),
+          createdAt: new Date(shipment.createdAt),
+          service: { name: shipment.service?.name || 'Unknown Service' }
+        })));
+      } else {
+        console.error('Failed to load shipments');
+        // Fallback to mock data if API fails
+        const mockShipments = [
+          {
+            id: "1",
+            trackingNumber: "SP123456789",
+            status: "IN_TRANSIT" as const,
+            senderName: "John Doe",
+            receiverName: "Jane Smith",
+            estimatedDelivery: new Date("2024-01-15T17:00:00Z"),
+            createdAt: new Date("2024-01-12T09:00:00Z"),
+            service: { name: "Express Delivery" }
+          }
+        ] as ShipmentListItem[];
+        setShipments(mockShipments);
+        loadedShipments = mockShipments;
+      }
+
+      // Load contacts from API (if available)
+      try {
+        const contactsResponse = await fetch('/api/contact');
+        if (contactsResponse.ok) {
+          const contactsData = await contactsResponse.json();
+          loadedContacts = contactsData.data || [];
+          setContacts(loadedContacts);
+        } else {
+          // Fallback to mock data
+          const mockContacts = [
+            {
+              id: "1",
+              name: "Sarah Johnson",
+              email: "sarah@example.com",
+              company: "Tech Corp",
+              serviceType: "Express Delivery",
+              status: "new",
+              createdAt: new Date("2024-01-13T14:30:00Z")
+            }
+          ] as ContactFormListItem[];
+          setContacts(mockContacts);
+          loadedContacts = mockContacts;
+        }
+      } catch (error) {
+        console.error('Failed to load contacts:', error);
+        loadedContacts = [];
+      }
+
+      // Calculate stats from loaded data
+      const totalShipments = loadedShipments.length;
+      const pendingShipments = loadedShipments.filter((s) => s.status === 'PENDING').length;
+      const inTransitShipments = loadedShipments.filter((s) => s.status === 'IN_TRANSIT').length;
+      const deliveredShipments = loadedShipments.filter((s) => s.status === 'DELIVERED').length;
+      
+      setStats({
+        totalShipments,
+        pendingShipments,
+        inTransitShipments,
+        deliveredShipments,
+        revenue: totalShipments * 45, // Mock revenue calculation
+        newContacts: loadedContacts.length
+      });
+
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+      // Set fallback data
+      setStats({
+        totalShipments: 0,
+        pendingShipments: 0,
+        inTransitShipments: 0,
+        deliveredShipments: 0,
+        revenue: 0,
+        newContacts: 0
+      });
+    } finally {
+      setIsLoading(false);
+    }
+     }, []);
+
   useEffect(() => {
     if (user?.publicMetadata.role === 'admin') {
       loadDashboardData();
     }
-  }, [user]);
-
-  const loadDashboardData = async () => {
-    try {
-      setIsLoading(true);
-      
-      // In a real app, these would be actual API calls
-      // For demo purposes, using mock data
-      setStats({
-        totalShipments: 1250,
-        pendingShipments: 45,
-        inTransitShipments: 89,
-        deliveredShipments: 1116,
-        revenue: 125000,
-        newContacts: 23
-      });
-
-      setShipments([
-        {
-          id: "1",
-          trackingNumber: "SP123456789",
-          status: "IN_TRANSIT" as const,
-          senderName: "John Doe",
-          receiverName: "Jane Smith",
-          estimatedDelivery: "2024-01-15T17:00:00Z",
-          createdAt: "2024-01-12T09:00:00Z",
-          service: { name: "Express Delivery" }
-        },
-        {
-          id: "2",
-          trackingNumber: "SP123456790",
-          status: "DELIVERED" as const,
-          senderName: "Alice Johnson",
-          receiverName: "Bob Wilson",
-          estimatedDelivery: "2024-01-14T15:00:00Z",
-          createdAt: "2024-01-11T10:30:00Z",
-          service: { name: "Standard Delivery" }
-        },
-        {
-          id: "3",
-          trackingNumber: "SP123456791",
-          status: "PENDING" as const,
-          senderName: "Carol Brown",
-          receiverName: "David Lee",
-          estimatedDelivery: "2024-01-16T14:00:00Z",
-          createdAt: "2024-01-13T11:15:00Z",
-          service: { name: "International Shipping" }
-        }
-      ] as ShipmentListItem[]);
-
-      setContacts([
-        {
-          id: "1",
-          name: "Sarah Johnson",
-          email: "sarah@example.com",
-          company: "Tech Corp",
-          serviceType: "Express Delivery",
-          status: "new",
-          createdAt: "2024-01-13T14:30:00Z"
-        },
-        {
-          id: "2",
-          name: "Michael Chen",
-          email: "michael@company.com",
-          company: "Global Imports",
-          serviceType: "International Shipping",
-          status: "contacted",
-          createdAt: "2024-01-13T10:20:00Z"
-        }
-      ] as ContactFormListItem[]);
-
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [loadDashboardData, user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -156,8 +180,10 @@ export default function AdminDashboard() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (date: Date | string | null) => {
+    if (!date) return '-';
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -177,6 +203,39 @@ export default function AdminDashboard() {
     );
   }
 
+  // Skeleton loading component
+  const SkeletonCard = () => (
+    <Card className="border-0 logistics-shadow">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+            <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
+          </div>
+          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const SkeletonTableRow = () => (
+    <TableRow>
+      <TableCell><div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div></TableCell>
+      <TableCell><div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div></TableCell>
+      <TableCell><div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div></TableCell>
+      <TableCell><div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div></TableCell>
+      <TableCell><div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div></TableCell>
+      <TableCell><div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div></TableCell>
+      <TableCell><div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div></TableCell>
+      <TableCell>
+        <div className="flex space-x-2">
+          <div className="h-8 bg-gray-200 rounded w-12 animate-pulse"></div>
+          <div className="h-8 bg-gray-200 rounded w-12 animate-pulse"></div>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -187,7 +246,13 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Cards */}
-        {stats && (
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
+            {[...Array(6)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : stats ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
             <Card className="border-0 logistics-shadow">
               <CardContent className="p-6">
@@ -261,11 +326,11 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
-        )}
+        ) : null}
 
         {/* Main Content */}
         <Tabs defaultValue="shipments" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-2 max-w-[320px] h-11">
             <TabsTrigger value="shipments">Shipments</TabsTrigger>
             <TabsTrigger value="contacts">Contact Forms</TabsTrigger>
           </TabsList>
@@ -330,7 +395,12 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(shipments as ShipmentListItem[]).map((shipment) => (
+                      {isLoading ? (
+                        [...Array(5)].map((_, i) => (
+                          <SkeletonTableRow key={i} />
+                        ))
+                      ) : (
+                        (shipments as ShipmentListItem[]).map((shipment) => (
                         <TableRow key={shipment.id as string}>
                           <TableCell className="font-mono font-medium">
                             {shipment.trackingNumber as string}
@@ -343,8 +413,8 @@ export default function AdminDashboard() {
                           <TableCell>{shipment.senderName as string}</TableCell>
                           <TableCell>{shipment.receiverName as string}</TableCell>
                           <TableCell>{(shipment.service as { name: string }).name}</TableCell>
-                          <TableCell>{formatDate(shipment.estimatedDelivery as string)}</TableCell>
-                          <TableCell>{formatDate(shipment.createdAt as string)}</TableCell>
+                          <TableCell>{formatDate(shipment.estimatedDelivery)}</TableCell>
+                          <TableCell>{formatDate(shipment.createdAt)}</TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
                               <Link href={`/admin/shipments/${shipment.id}`}>
@@ -356,7 +426,8 @@ export default function AdminDashboard() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -386,7 +457,12 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {contacts.map((contact) => (
+                      {isLoading ? (
+                        [...Array(3)].map((_, i) => (
+                          <SkeletonTableRow key={i} />
+                        ))
+                      ) : (
+                        contacts.map((contact) => (
                         <TableRow key={contact.id}>
                           <TableCell className="font-medium">{contact.name}</TableCell>
                           <TableCell>{contact.email}</TableCell>
@@ -409,7 +485,8 @@ export default function AdminDashboard() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>

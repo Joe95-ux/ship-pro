@@ -37,16 +37,16 @@ export default function ContactPage() {
     {
       icon: Phone,
       title: "Phone",
-      details: "1-800-SHIP-PRO",
-      subdetails: "(1-800-744-7776)",
-      action: "tel:+18007447776"
+      details: "1-800-LOGISTICA",
+      subdetails: "(1-800-564-4782)",
+      action: "tel:+18005644782"
     },
     {
       icon: Mail,
       title: "Email",
-      details: "info@shippro.com",
-      subddetails: "support@shippro.com",
-      action: "mailto:info@shippro.com"
+      details: "info@logisticafalcon.com",
+      subddetails: "support@logisticafalcon.com",
+      action: "mailto:info@logisticafalcon.com"
     },
     {
       icon: MapPin,
@@ -191,10 +191,10 @@ export default function ContactPage() {
                       </Button>
                     </div>
                   ) : (
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="name">Full Name *</Label>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                          <Label htmlFor="name" className="form-label">Full Name *</Label>
                           <Input
                             id="name"
                             type="text"
@@ -202,11 +202,11 @@ export default function ContactPage() {
                             onChange={(e) => handleInputChange('name', e.target.value)}
                             placeholder="John Doe"
                             required
-                            className="mt-1"
+                            className="form-input"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="email">Email Address *</Label>
+                        <div className="form-group">
+                          <Label htmlFor="email" className="form-label">Email Address *</Label>
                           <Input
                             id="email"
                             type="email"
@@ -214,43 +214,43 @@ export default function ContactPage() {
                             onChange={(e) => handleInputChange('email', e.target.value)}
                             placeholder="john@company.com"
                             required
-                            className="mt-1"
+                            className="form-input"
                           />
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="phone">Phone Number</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                          <Label htmlFor="phone" className="form-label">Phone Number</Label>
                           <Input
                             id="phone"
                             type="tel"
                             value={formData.phone}
                             onChange={(e) => handleInputChange('phone', e.target.value)}
                             placeholder="(555) 123-4567"
-                            className="mt-1"
+                            className="form-input"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="company">Company Name</Label>
+                        <div className="form-group">
+                          <Label htmlFor="company" className="form-label">Company Name</Label>
                           <Input
                             id="company"
                             type="text"
                             value={formData.company}
                             onChange={(e) => handleInputChange('company', e.target.value)}
                             placeholder="Company Inc."
-                            className="mt-1"
+                            className="form-input"
                           />
                         </div>
                       </div>
                       
-                      <div>
-                        <Label htmlFor="serviceType">Service Type</Label>
+                      <div className="form-group">
+                        <Label htmlFor="serviceType" className="form-label">Service Type</Label>
                         <Select 
                           value={formData.serviceType} 
                           onValueChange={(value) => handleInputChange('serviceType', value)}
                         >
-                          <SelectTrigger className="mt-1">
+                          <SelectTrigger className="form-input">
                             <SelectValue placeholder="Select a service" />
                           </SelectTrigger>
                           <SelectContent>
@@ -263,8 +263,8 @@ export default function ContactPage() {
                         </Select>
                       </div>
                       
-                      <div>
-                        <Label htmlFor="message">Message *</Label>
+                      <div className="form-group">
+                        <Label htmlFor="message" className="form-label">Message *</Label>
                         <Textarea
                           id="message"
                           value={formData.message}
@@ -272,7 +272,7 @@ export default function ContactPage() {
                           placeholder="Tell us about your shipping needs, package details, or any questions you have..."
                           rows={5}
                           required
-                          className="mt-1"
+                          className="form-input"
                         />
                       </div>
                       
@@ -315,7 +315,7 @@ export default function ContactPage() {
               <Card className="border-0 logistics-shadow">
                 <CardHeader>
                   <CardTitle className="text-xl font-bold text-gray-900">
-                    Why Choose ShipPro?
+                    Why Choose Logistica Falcon?
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

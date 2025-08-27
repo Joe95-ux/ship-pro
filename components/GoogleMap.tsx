@@ -4,6 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader } from "@googlemaps/js-api-loader";
 import type { MapConfig, MapMarker } from '@/lib/types';
 
+// Add Google Maps types
+declare global {
+  interface Window {
+    google: typeof google;
+  }
+}
+
 interface GoogleMapProps {
   config: MapConfig;
   className?: string;
@@ -88,7 +95,7 @@ export default function GoogleMap({ config, className = "", onMapLoad }: GoogleM
         // Add polyline for route
         if (config.polyline && config.polyline.length > 1) {
           new google.maps.Polyline({
-            path: config.polyline,
+            path: config.polyline.map(coord => ({ lat: coord.latitude, lng: coord.longitude })),
             geodesic: true,
             strokeColor: '#D40511',
             strokeOpacity: 1.0,
