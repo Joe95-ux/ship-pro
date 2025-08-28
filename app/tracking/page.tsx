@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import GoogleMap, { MapPlaceholder } from "@/components/GoogleMap";
-import type { MapConfig } from "@/lib/types";
+import type { MapConfig, Address, Dimensions } from "@/lib/types";
 
 interface TrackingEvent {
   id: string;
@@ -35,16 +35,35 @@ interface TrackingEvent {
 interface TrackingData {
   trackingNumber: string;
   status: string;
-  estimatedDelivery: string;
-  currentLocation: {
+  estimatedDelivery: string | Date;
+  actualDelivery?: string | Date | null;
+  currentLocation?: {
     name: string;
-    coordinates: {
+    address?: Address;
+    coordinates?: {
       latitude: number;
       longitude: number;
     };
-  };
+  } | null;
+  route?: Array<{ latitude: number; longitude: number }>;
   events: TrackingEvent[];
   progress: number;
+  sender?: {
+    name: string;
+    address: Address;
+  };
+  receiver?: {
+    name: string;
+    address: Address;
+  };
+  service?: {
+    name: string;
+    description: string;
+  };
+  weight?: number;
+  dimensions?: Dimensions;
+  estimatedCost?: number;
+  finalCost?: number;
 }
 
 export default function TrackingPage() {
@@ -78,14 +97,21 @@ export default function TrackingPage() {
     }
   }, [trackingData]);
 
-  // Sample tracking data for demonstration
+    // Sample tracking data for demonstration
   // Sample delivered package
   const deliveredTrackingData: TrackingData = {
     trackingNumber: "SP123456789",
     status: "DELIVERED",
     estimatedDelivery: "2024-01-15T17:00:00Z",
     currentLocation: {
-      name: "Delivered - Los Angeles",
+      name: "Customer Address, Los Angeles, CA",
+      address: {
+        street: "123 Delivery St",
+        city: "Los Angeles",
+        state: "CA",
+        postalCode: "90210",
+        country: "USA"
+      },
       coordinates: {
         latitude: 34.0522,
         longitude: -118.2437
@@ -97,7 +123,7 @@ export default function TrackingPage() {
         status: "Delivered",
         description: "Package has been delivered successfully and signed by recipient",
         location: {
-          name: "Los Angeles Delivery Address",
+          name: "Customer Address",
           address: {
             city: "Los Angeles",
             state: "CA",
@@ -115,15 +141,15 @@ export default function TrackingPage() {
         status: "Out for delivery",
         description: "Package is out for delivery",
         location: {
-          name: "Los Angeles Hub",
+          name: "Los Angeles Distribution Center",
           address: {
             city: "Los Angeles",
             state: "CA",
             country: "USA"
           },
           coordinates: {
-            latitude: 34.0522,
-            longitude: -118.2437
+            latitude: 34.0899,
+            longitude: -118.3617
           }
         },
         timestamp: "2024-01-15T08:00:00Z"
@@ -151,7 +177,7 @@ export default function TrackingPage() {
         status: "Package picked up",
         description: "Package has been picked up from sender",
         location: {
-          name: "New York Facility",
+          name: "New York Origin Facility",
           address: {
             city: "New York",
             state: "NY",
@@ -165,7 +191,13 @@ export default function TrackingPage() {
         timestamp: "2024-01-12T09:00:00Z"
       }
     ],
-    progress: 100
+    progress: 100,
+    route: [
+      { latitude: 40.7128, longitude: -74.0060 }, // New York
+      { latitude: 41.8781, longitude: -87.6298 }, // Chicago
+      { latitude: 34.0899, longitude: -118.3617 }, // LA Distribution
+      { latitude: 34.0522, longitude: -118.2437 }  // Final destination
+    ]
   };
 
   // Sample in-transit package
@@ -174,7 +206,14 @@ export default function TrackingPage() {
     status: "IN_TRANSIT",
     estimatedDelivery: "2024-01-18T17:00:00Z",
     currentLocation: {
-      name: "Chicago Distribution Center",
+      name: "Chicago Distribution Center, IL",
+      address: {
+        street: "1500 W Fulton St",
+        city: "Chicago",
+        state: "IL",
+        postalCode: "60607",
+        country: "USA"
+      },
       coordinates: {
         latitude: 41.8781,
         longitude: -87.6298
@@ -204,7 +243,7 @@ export default function TrackingPage() {
         status: "Package picked up",
         description: "Package has been picked up from sender",
         location: {
-          name: "Miami Facility",
+          name: "Miami Origin Facility",
           address: {
             city: "Miami",
             state: "FL",
@@ -218,18 +257,43 @@ export default function TrackingPage() {
         timestamp: "2024-01-15T09:00:00Z"
       }
     ],
-    progress: 60
+    progress: 60,
+    route: [
+      { latitude: 25.7617, longitude: -80.1918 }, // Miami
+      { latitude: 41.8781, longitude: -87.6298 }, // Chicago
+      { latitude: 34.0522, longitude: -118.2437 }  // Los Angeles (destination)
+    ]
   };
 
   // Generate dynamic tracking data for any valid tracking number
   const generateDynamicTrackingData = (trackingNumber: string): TrackingData => {
     const statuses = ["PENDING", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"];
     const cities = [
-      { name: "New York", coords: { latitude: 40.7128, longitude: -74.0060 } },
-      { name: "Chicago", coords: { latitude: 41.8781, longitude: -87.6298 } },
-      { name: "Los Angeles", coords: { latitude: 34.0522, longitude: -118.2437 } },
-      { name: "Miami", coords: { latitude: 25.7617, longitude: -80.1918 } },
-      { name: "Denver", coords: { latitude: 39.7392, longitude: -104.9903 } }
+      { 
+        name: "New York", 
+        coords: { latitude: 40.7128, longitude: -74.0060 },
+        state: "NY"
+      },
+      { 
+        name: "Chicago", 
+        coords: { latitude: 41.8781, longitude: -87.6298 },
+        state: "IL"
+      },
+      { 
+        name: "Los Angeles", 
+        coords: { latitude: 34.0522, longitude: -118.2437 },
+        state: "CA"
+      },
+      { 
+        name: "Miami", 
+        coords: { latitude: 25.7617, longitude: -80.1918 },
+        state: "FL"
+      },
+      { 
+        name: "Denver", 
+        coords: { latitude: 39.7392, longitude: -104.9903 },
+        state: "CO"
+      }
     ];
 
     // Use tracking number to determine status (pseudo-random but consistent)
@@ -238,6 +302,7 @@ export default function TrackingPage() {
     const currentStatus = statuses[statusIndex];
     const cityIndex = numberValue % cities.length;
     const currentCity = cities[cityIndex];
+    const originCity = cities[(cityIndex + 1) % cities.length];
 
     const progress = statusIndex * 25; // 0, 25, 50, 75, 100
 
@@ -246,19 +311,26 @@ export default function TrackingPage() {
       status: currentStatus,
       estimatedDelivery: new Date(Date.now() + (5 - statusIndex) * 24 * 60 * 60 * 1000).toISOString(),
       currentLocation: {
-        name: `${currentCity.name} Distribution Center`,
+        name: `${currentCity.name} Distribution Center, ${currentCity.state}`,
+        address: {
+          street: "Distribution Center",
+          city: currentCity.name,
+          state: currentCity.state,
+          postalCode: "00000",
+          country: "USA"
+        },
         coordinates: currentCity.coords
       },
       events: [
         {
           id: "1",
-          status: currentStatus === "DELIVERED" ? "Delivered" : currentStatus.replace('_', ' ').toLowerCase(),
+          status: currentStatus === "DELIVERED" ? "Delivered" : formatStatus(currentStatus),
           description: `Package is ${currentStatus.toLowerCase().replace('_', ' ')}`,
           location: {
-            name: `${currentCity.name} Facility`,
+            name: `${currentCity.name} Distribution Center`,
             address: {
               city: currentCity.name,
-              state: "State",
+              state: currentCity.state,
               country: "USA"
             },
             coordinates: currentCity.coords
@@ -270,18 +342,22 @@ export default function TrackingPage() {
           status: "Package picked up",
           description: "Package has been picked up from sender",
           location: {
-            name: "Origin Facility",
+            name: `${originCity.name} Origin Facility`,
             address: {
-              city: "Origin City",
-              state: "State",
+              city: originCity.name,
+              state: originCity.state,
               country: "USA"
             },
-            coordinates: { latitude: 40.7128, longitude: -74.0060 }
+            coordinates: originCity.coords
           },
           timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
         }
       ],
-      progress
+      progress,
+      route: [
+        originCity.coords, // Origin
+        currentCity.coords, // Current/Destination
+      ]
     };
   };
 
@@ -306,11 +382,14 @@ export default function TrackingPage() {
         const response = await fetch(`/api/tracking/${trackingNumber}`);
         if (response.ok) {
           const trackingApiData = await response.json();
+          console.log('Real tracking data from API:', trackingApiData);
           setTrackingData(trackingApiData);
           return;
+        } else {
+          console.log('API response not ok:', response.status, response.statusText);
         }
       } catch (error) {
-        console.log('Failed to fetch from API, using demo data');
+        console.log('Failed to fetch from API, using demo data:', error);
       }
 
       // For demo purposes, show specific sample data for exact matches or generate dynamic data
@@ -350,42 +429,86 @@ export default function TrackingPage() {
 
     console.log('loadMap: Creating map config with tracking data:', trackingData);
 
-    // Create map configuration based on tracking data
+    // Create map configuration based on actual tracking event locations
     const defaultCoords = { latitude: 40.7128, longitude: -74.0060 }; // New York default
     const currentLocationCoords = trackingData.currentLocation?.coordinates || defaultCoords;
     const currentLocationName = trackingData.currentLocation?.name || 'Unknown Location';
 
-    const config: MapConfig = {
-      center: currentLocationCoords,
-      zoom: 6,
-      markers: [
-        {
-          id: 'origin',
-          position: trackingData.events[0]?.location?.coordinates || defaultCoords,
-          title: 'Origin',
-          description: 'Package pickup location',
-          type: 'origin'
-        },
-        {
-          id: 'current',
-          position: currentLocationCoords,
-          title: 'Current Location',
-          description: currentLocationName,
-          type: 'current'
-        },
-        {
-          id: 'destination',
-          position: { latitude: 34.0522, longitude: -118.2437 }, // Los Angeles for demo
-          title: 'Destination',
-          description: 'Final delivery location',
-          type: 'destination'
-        }
-      ],
-      polyline: [
+    // Use route data if available, otherwise get coordinates from events
+    let polylineCoords;
+    if (trackingData.route && trackingData.route.length > 0) {
+      polylineCoords = trackingData.route;
+    } else {
+      // Get all event locations for polyline
+      const eventCoordinates = trackingData.events
+        .filter(event => event.location?.coordinates)
+        .map(event => event.location.coordinates)
+        .reverse(); // Reverse to show chronological order
+
+      polylineCoords = eventCoordinates.length > 0 ? eventCoordinates : [
         { latitude: 40.7128, longitude: -74.0060 }, // New York
         { latitude: 41.8781, longitude: -87.6298 }, // Chicago
         { latitude: 34.0522, longitude: -118.2437 }  // Los Angeles
-      ]
+      ];
+    }
+
+    // Create markers from tracking events
+    const markers: Array<{
+      id: string;
+      position: { latitude: number; longitude: number };
+      title: string;
+      description: string;
+      type: 'origin' | 'current' | 'destination' | 'waypoint';
+    }> = [];
+    
+    // Origin marker (first event - chronologically last in array)
+    const originEvent = trackingData.events[trackingData.events.length - 1];
+    if (originEvent?.location?.coordinates) {
+      markers.push({
+        id: 'origin',
+        position: originEvent.location.coordinates,
+        title: 'Origin',
+        description: originEvent.location.name || 'Package pickup location',
+        type: 'origin' as const
+      });
+    }
+
+    // Current location marker
+    markers.push({
+      id: 'current',
+      position: currentLocationCoords,
+      title: 'Current Location',
+      description: currentLocationName,
+      type: 'current' as const
+    });
+
+    // Destination marker (most recent event or estimated destination)
+    const latestEvent = trackingData.events[0];
+    if (latestEvent?.location?.coordinates && trackingData.status === 'DELIVERED') {
+      markers.push({
+        id: 'destination',
+        position: latestEvent.location.coordinates,
+        title: 'Delivered',
+        description: latestEvent.location.name || 'Delivery location',
+        type: 'destination' as const
+      });
+    } else {
+      // Use estimated destination based on route or default
+      const destinationCoords = polylineCoords[polylineCoords.length - 1] || { latitude: 34.0522, longitude: -118.2437 };
+      markers.push({
+        id: 'destination',
+        position: destinationCoords,
+        title: 'Destination',
+        description: 'Final delivery location',
+        type: 'destination' as const
+      });
+    }
+
+    const config: MapConfig = {
+      center: currentLocationCoords,
+      zoom: 6,
+      markers,
+      polyline: polylineCoords
     };
 
     console.log('loadMap: Setting map config:', config);
@@ -414,10 +537,13 @@ export default function TrackingPage() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'picked_up':
+      case 'package picked up':
         return 'bg-blue-100 text-blue-800';
       case 'in_transit':
+      case 'in transit':
         return 'bg-yellow-100 text-yellow-800';
       case 'out_for_delivery':
+      case 'out for delivery':
         return 'bg-orange-100 text-orange-800';
       case 'delivered':
         return 'bg-green-100 text-green-800';
@@ -426,7 +552,26 @@ export default function TrackingPage() {
     }
   };
 
-  const formatDateTime = (timestamp: string) => {
+  const formatStatus = (status: string) => {
+    switch (status.toUpperCase()) {
+      case 'PICKED_UP':
+        return 'Package Picked Up';
+      case 'IN_TRANSIT':
+        return 'In Transit';
+      case 'OUT_FOR_DELIVERY':
+        return 'Out for Delivery';
+      case 'DELIVERED':
+        return 'Delivered';
+      case 'PENDING':
+        return 'Pending';
+      case 'CANCELLED':
+        return 'Cancelled';
+      default:
+        return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+  };
+
+  const formatDateTime = (timestamp: string | Date) => {
     return new Date(timestamp).toLocaleString('en-US', {
       weekday: 'short',
       year: 'numeric',
@@ -510,18 +655,56 @@ export default function TrackingPage() {
                     </p>
                   </div>
                   <Badge className={`px-4 py-2 ${getStatusColor(trackingData.status)}`}>
-                    {trackingData.status.replace('_', ' ').toUpperCase()}
+                    {formatStatus(trackingData.status)}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
                       <span>Delivery Progress</span>
                       <span>{trackingData.progress}%</span>
                     </div>
-                    <Progress value={trackingData.progress} className="h-2" />
+                    {/* Custom Progress Bar */}
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-500">Order Processed</span>
+                        <span className="text-xs text-gray-500">Order Shipped</span>
+                        <span className="text-xs text-gray-500">En Route</span>
+                        <span className="text-xs text-gray-500">Arrived</span>
+                      </div>
+                      <div className="relative flex items-center">
+                        {/* Progress line */}
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full h-1 bg-gray-200 rounded-full">
+                            <div 
+                              className="h-1 bg-blue-500 rounded-full transition-all duration-500"
+                              style={{ width: `${trackingData.progress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        {/* Progress steps */}
+                        <div className="relative flex justify-between w-full">
+                          {[0, 33, 66, 100].map((step, index) => (
+                            <div
+                              key={index}
+                              className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                                trackingData.progress >= step
+                                  ? 'bg-blue-500 border-blue-500 text-white'
+                                  : 'bg-white border-gray-300 text-gray-400'
+                              }`}
+                            >
+                              {trackingData.progress >= step && (
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -579,78 +762,108 @@ export default function TrackingPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
-                    {trackingData.events.map((event, index) => {
-                      const isCompleted = index === 0; // Most recent event is completed
-                      const isActive = index === 0 && trackingData.status !== 'DELIVERED';
-                      const isDelivered = trackingData.status === 'DELIVERED' && event.status.toLowerCase().includes('delivered');
-                      
-                      return (
-                        <div 
-                          key={event.id} 
-                          className={`flex space-x-4 transition-all duration-500 ease-in-out transform ${
-                            isCompleted || isDelivered ? 'animate-in slide-in-from-left-5' : 'opacity-70'
-                          }`}
-                          style={{
-                            animationDelay: `${index * 100}ms`,
-                            animationFillMode: 'both'
-                          }}
-                        >
-                          <div className="flex flex-col items-center">
-                            <div className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${
-                              isCompleted || isDelivered 
-                                ? 'bg-green-500 border-2 border-green-500 shadow-lg shadow-green-200' 
-                                : isActive 
-                                ? 'bg-blue-500 border-2 border-blue-500 shadow-lg shadow-blue-200 animate-pulse' 
-                                : 'bg-white border-2 border-gray-300'
-                            }`}>
-                              {(isCompleted || isDelivered) && (
-                                <div className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-25"></div>
-                              )}
-                              <div className={`text-sm ${
-                                isCompleted || isDelivered || isActive ? 'text-white' : 'text-gray-400'
+                  <div className="relative">
+                    {/* Add CSS for animated dashed line */}
+                    <style jsx>{`
+                      @keyframes dash {
+                        from {
+                          stroke-dashoffset: 20;
+                        }
+                        to {
+                          stroke-dashoffset: 0;
+                        }
+                      }
+                      .animated-dash {
+                        stroke-dasharray: 5 5;
+                        animation: dash 1.5s linear infinite;
+                      }
+                    `}</style>
+                    
+                    {/* Vertical dashed line */}
+                    <div className="absolute left-5 top-6 bottom-0 w-0.5">
+                      <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 2 100%">
+                        <line 
+                          x1="1" y1="0" x2="1" y2="100%" 
+                          stroke="#e5e7eb" 
+                          strokeWidth="2"
+                          className="animated-dash"
+                        />
+                      </svg>
+                    </div>
+                    
+                    <div className="space-y-8">
+                      {trackingData.events.map((event, index) => {
+                        const isCompleted = index === 0; // Most recent event is completed
+                        const isActive = index === 0 && trackingData.status !== 'DELIVERED';
+                        const isDelivered = trackingData.status === 'DELIVERED' && event.status.toLowerCase().includes('delivered');
+                        
+                        return (
+                          <div 
+                            key={event.id} 
+                            className={`relative flex items-start space-x-4 transition-all duration-500 ease-in-out transform ${
+                              index === 0 ? 'animate-in slide-in-from-left-5' : ''
+                            }`}
+                            style={index === 0 ? {
+                              animationDelay: '100ms',
+                              animationFillMode: 'both'
+                            } : {}}
+                          >
+                            {/* Timeline dot */}
+                            <div className="relative z-10 flex-shrink-0">
+                              <div className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 ${
+                                isCompleted || isDelivered 
+                                  ? 'bg-blue-500 border-4 border-white shadow-lg ring-4 ring-blue-100' 
+                                  : isActive 
+                                  ? 'bg-blue-400 border-4 border-white shadow-lg ring-4 ring-blue-100 animate-pulse' 
+                                  : 'bg-gray-200 border-4 border-white shadow-md'
                               }`}>
-                                {getStatusIcon(event.status)}
+                                {(isCompleted || isDelivered) && index === 0 && (
+                                  <div className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-25"></div>
+                                )}
+                                <div className={`text-sm ${
+                                  isCompleted || isDelivered || isActive ? 'text-white' : 'text-gray-500'
+                                }`}>
+                                  {getStatusIcon(event.status)}
+                                </div>
                               </div>
                             </div>
-                            {index < trackingData.events.length - 1 && (
-                              <div className={`w-0.5 h-16 mt-3 transition-all duration-500 ${
-                                isCompleted || isDelivered ? 'bg-green-300' : 'bg-gray-200'
-                              }`}></div>
-                            )}
-                          </div>
-                          <div className="flex-1 pb-6">
-                            <div className="flex items-start justify-between">
-                              <h4 className={`text-lg sm:text-xl font-semibold transition-colors duration-300 ${
-                                isCompleted || isDelivered ? 'text-green-700' : isActive ? 'text-blue-700' : 'text-gray-900'
-                              }`}>
-                                {event.status}
-                                {isDelivered && (
-                                  <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 animate-bounce">
-                                    ✅ Delivered
-                                  </span>
-                                )}
-                              </h4>
-                              <span className="text-sm text-gray-500 font-medium">
-                                {formatDateTime(event.timestamp)}
-                              </span>
+                            
+                            {/* Content */}
+                            <div className="flex-1 min-w-0 pb-4">
+                              <div className="flex items-start justify-between mb-1">
+                                <h4 className={`text-lg font-semibold transition-colors duration-300 ${
+                                  isCompleted || isDelivered ? 'text-gray-900' : isActive ? 'text-blue-700' : 'text-gray-700'
+                                }`}>
+                                  {formatStatus(event.status)}
+                                  {isDelivered && (
+                                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      ✅ Delivered
+                                    </span>
+                                  )}
+                                </h4>
+                                <time className="text-sm text-gray-500 font-medium whitespace-nowrap ml-4">
+                                  {formatDateTime(event.timestamp)}
+                                </time>
+                              </div>
+                              
+                              <p className="text-base text-gray-600 leading-relaxed mb-2">
+                                {event.description}
+                              </p>
+                              
+                              <div className="flex items-center text-sm text-gray-500">
+                                <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
+                                <span className="truncate">
+                                  {event.location?.name 
+                                    ? `${event.location.name}${event.location.address?.city ? `, ${event.location.address.city}` : ''}${event.location.address?.state ? `, ${event.location.address.state}` : ''}`
+                                    : 'Location not available'
+                                  }
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-base sm:text-lg text-gray-600 mt-2 leading-relaxed">
-                              {event.description}
-                            </p>
-                            <div className="flex items-center mt-3 text-sm text-gray-500">
-                              <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                              <span>
-                                {event.location?.name 
-                                  ? `${event.location.name}${event.location.address?.city ? `, ${event.location.address.city}` : ''}${event.location.address?.state ? `, ${event.location.address.state}` : ''}`
-                                  : 'Location not available'
-                                }
-                              </span>
-                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

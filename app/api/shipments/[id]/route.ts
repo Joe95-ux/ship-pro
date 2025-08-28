@@ -128,6 +128,16 @@ export async function PATCH(
       );
     }
 
+    // Check if status has changed to create a tracking event
+    const statusChanged = body.status && body.status !== existingShipment.status;
+    
+    console.log('Update shipment debug:', {
+      oldStatus: existingShipment.status,
+      newStatus: body.status,
+      statusChanged,
+      bodyKeys: Object.keys(body)
+    });
+    
     // Update shipment using the found shipment's actual ID
     const updatedShipment = await db.shipment.update({
       where: { id: existingShipment.id },
@@ -144,6 +154,126 @@ export async function PATCH(
         },
       },
     });
+
+    // Create tracking event if status changed
+    if (statusChanged) {
+      const getStatusDescription = (status: string) => {
+        switch (status) {
+          case 'PENDING': return 'Shipment created and pending pickup';
+          case 'PICKED_UP': return 'Package has been picked up from sender';
+          case 'IN_TRANSIT': return 'Package is in transit to destination';
+          case 'OUT_FOR_DELIVERY': return 'Package is out for delivery';
+          case 'DELIVERED': return 'Package has been delivered successfully';
+          case 'CANCELLED': return 'Shipment has been cancelled';
+          default: return `Status updated to ${status}`;
+        }
+      };
+
+      const getLocationForStatus = (status: string) => {
+        const defaultLocations = {
+          'PENDING': {
+            name: 'Processing Center',
+            address: {
+              street: '123 Logistics Ave',
+              city: 'New York',
+              state: 'NY',
+              postalCode: '10001',
+              country: 'USA'
+            },
+            coordinates: {
+              latitude: 40.7128,
+              longitude: -74.0060
+            }
+          },
+          'PICKED_UP': {
+            name: 'Origin Facility',
+            address: {
+              street: '456 Pickup St',
+              city: 'New York',
+              state: 'NY',
+              postalCode: '10001',
+              country: 'USA'
+            },
+            coordinates: {
+              latitude: 40.7128,
+              longitude: -74.0060
+            }
+          },
+          'IN_TRANSIT': {
+            name: 'Distribution Center',
+            address: {
+              street: '789 Transit Blvd',
+              city: 'Chicago',
+              state: 'IL',
+              postalCode: '60601',
+              country: 'USA'
+            },
+            coordinates: {
+              latitude: 41.8781,
+              longitude: -87.6298
+            }
+          },
+          'OUT_FOR_DELIVERY': {
+            name: 'Local Delivery Hub',
+            address: {
+              street: '321 Delivery Way',
+              city: 'Los Angeles',
+              state: 'CA',
+              postalCode: '90210',
+              country: 'USA'
+            },
+            coordinates: {
+              latitude: 34.0522,
+              longitude: -118.2437
+            }
+          },
+          'DELIVERED': {
+            name: 'Delivery Address',
+            address: {
+              street: '999 Customer St',
+              city: 'Los Angeles',
+              state: 'CA',
+              postalCode: '90210',
+              country: 'USA'
+            },
+            coordinates: {
+              latitude: 34.0522,
+              longitude: -118.2437
+            }
+          }
+        };
+        
+        return defaultLocations[status as keyof typeof defaultLocations] || defaultLocations.PENDING;
+      };
+
+      await db.trackingEvent.create({
+        data: {
+          shipmentId: existingShipment.id,
+          status: body.status,
+          description: getStatusDescription(body.status),
+          location: updatedShipment.currentLocation || getLocationForStatus(body.status),
+          timestamp: new Date(),
+        },
+      });
+
+      // Fetch updated shipment with new tracking events
+      const finalShipment = await db.shipment.findUnique({
+        where: { id: existingShipment.id },
+        include: {
+          service: true,
+          trackingEvents: {
+            orderBy: {
+              timestamp: 'desc',
+            },
+          },
+        },
+      });
+
+      return NextResponse.json({
+        message: 'Shipment updated successfully',
+        shipment: finalShipment,
+      });
+    }
 
     return NextResponse.json({
       message: 'Shipment updated successfully',

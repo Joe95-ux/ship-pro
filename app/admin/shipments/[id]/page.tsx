@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { redirect, useParams } from "next/navigation";
+import { redirect, useParams, useSearchParams } from "next/navigation";
 import { 
   ArrowLeft, 
   Package, 
@@ -12,7 +12,10 @@ import {
   FileText, 
   Download,
   Printer,
-  Eye
+  Eye,
+  CheckCircle,
+  Truck,
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import Link from "next/link";
 import ReceiptGenerator from "@/components/ReceiptGenerator";
 import WaybillGenerator from "@/components/WaybillGenerator";
+import { toast } from "@/hooks/use-toast";
 import type { ShipmentWithDetails, ReceiptData, WaybillData, Address, Dimensions, PaymentStatus } from "@/lib/types";
 
 interface MockShipment {
@@ -58,6 +62,7 @@ interface MockShipment {
 export default function ShipmentDetailsPage() {
   const { user, isLoaded } = useUser();
   const params = useParams();
+  const searchParams = useSearchParams();
   const shipmentId = params.id as string;
   
   const [shipment, setShipment] = useState<MockShipment | null>(null);
@@ -78,145 +83,46 @@ export default function ShipmentDetailsPage() {
     }
   }, [user, shipmentId]);
 
+  // Reload data when returning from edit page (detected by URL parameter)
+  useEffect(() => {
+    const updated = searchParams.get('updated');
+    if (updated && shipment) {
+      loadShipmentDetails();
+    }
+  }, [searchParams, shipment]);
+
+  // Reload data when page becomes visible (e.g., returning from edit page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && shipment) {
+        loadShipmentDetails();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [shipment]);
+
   const loadShipmentDetails = async () => {
     try {
       setIsLoading(true);
       
-      // Try to fetch real shipment data from API
-      try {
-        const response = await fetch(`/api/shipments/${shipmentId}`);
-        if (response.ok) {
-          const shipmentData = await response.json();
-          setShipment(shipmentData.shipment);
-          return;
-        }
-      } catch (error) {
-        console.log('Failed to fetch shipment from API, using mock data');
+      const response = await fetch(`/api/shipments/${shipmentId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch shipment data');
       }
       
-      // Fallback to mock shipment data for demo
-      const mockShipment = {
-        id: shipmentId,
-        trackingNumber: `SP${shipmentId.slice(-9)}`, // Generate tracking number based on ID
-        status: "IN_TRANSIT",
-        senderName: "John Doe",
-        senderEmail: "john@example.com",
-        senderPhone: "+1-555-0123",
-        senderAddress: {
-          street: "123 Main St",
-          city: "New York",
-          state: "NY",
-          postalCode: "10001",
-          country: "USA"
-        },
-        receiverName: "Jane Smith",
-        receiverEmail: "jane@example.com",
-        receiverPhone: "+1-555-0456",
-        receiverAddress: {
-          street: "456 Oak Ave",
-          city: "Los Angeles",
-          state: "CA",
-          postalCode: "90210",
-          country: "USA"
-        },
-        serviceId: "1",
-        service: {
-          id: "1",
-          name: "Express Delivery",
-          description: "Fast and reliable express delivery service",
-          features: [],
-          active: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        weight: 5.2,
-        dimensions: {
-          length: 30,
-          width: 20,
-          height: 15,
-          unit: "cm"
-        },
-        value: 150,
-        description: "Electronics - Laptop computer",
-        specialInstructions: "Handle with care - fragile electronics",
-        estimatedCost: 45.99,
-        finalCost: 45.99,
-        currency: "USD",
-        paymentStatus: "PAID",
-        estimatedDelivery: new Date("2024-01-15T17:00:00Z"),
-        actualDelivery: null,
-        currentLocation: {
-          name: "Chicago Distribution Center",
-          address: {
-            street: "789 Logistics Blvd",
-            city: "Chicago",
-            state: "IL",
-            postalCode: "60601",
-            country: "USA"
-          },
-          coordinates: {
-            latitude: 41.8781,
-            longitude: -87.6298
-          }
-        },
-        route: [],
-        trackingEvents: [
-          {
-            id: "1",
-            shipmentId: shipmentId,
-            status: "Package picked up",
-            description: "Package has been picked up from sender",
-            location: {
-              name: "New York Facility",
-              address: {
-                street: "123 Shipping St",
-                city: "New York",
-                state: "NY",
-                postalCode: "10001",
-                country: "USA"
-              },
-              coordinates: {
-                latitude: 40.7128,
-                longitude: -74.0060
-              }
-            },
-            timestamp: new Date("2024-01-12T09:00:00Z"),
-            createdAt: new Date("2024-01-12T09:00:00Z")
-          },
-          {
-            id: "2",
-            shipmentId: shipmentId,
-            status: "In transit",
-            description: "Package is in transit to destination",
-            location: {
-              name: "Chicago Distribution Center",
-              address: {
-                street: "789 Logistics Blvd",
-                city: "Chicago",
-                state: "IL",
-                postalCode: "60601",
-                country: "USA"
-              },
-              coordinates: {
-                latitude: 41.8781,
-                longitude: -87.6298
-              }
-            },
-            timestamp: new Date("2024-01-13T14:30:00Z"),
-            createdAt: new Date("2024-01-13T14:30:00Z")
-          }
-        ],
-        waybillGenerated: true,
-        receiptGenerated: true,
-        createdBy: user?.id || null,
-        assignedDriver: null,
-        createdAt: new Date("2024-01-12T08:00:00Z"),
-        updatedAt: new Date("2024-01-13T14:30:00Z")
-      };
-
-      setShipment(mockShipment);
+      const shipmentData = await response.json();
+      setShipment(shipmentData.shipment);
+      
     } catch (error) {
       console.error('Failed to load shipment details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load shipment details. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -319,7 +225,7 @@ export default function ShipmentDetailsPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800';
@@ -347,6 +253,52 @@ export default function ShipmentDetailsPage() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+      case 'shipment created and pending pickup':
+        return <Clock className="h-4 w-4" />;
+      case 'picked_up':
+      case 'package has been picked up from sender':
+        return <Package className="h-4 w-4" />;
+      case 'in_transit':
+      case 'package is in transit to destination':
+        return <Truck className="h-4 w-4" />;
+      case 'out_for_delivery':
+      case 'package is out for delivery':
+        return <MapPin className="h-4 w-4" />;
+      case 'delivered':
+      case 'package has been delivered successfully':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'cancelled':
+      case 'shipment has been cancelled':
+        return <AlertCircle className="h-4 w-4" />;
+      default:
+        return <Package className="h-4 w-4" />;
+    }
+  };
+
+  const getStatusColor = (status: string, index: number) => {
+    const isCompleted = index === 0; // Most recent event is completed
+    const isDelivered = status.toLowerCase().includes('delivered');
+    
+    if (isCompleted || isDelivered) {
+      return {
+        dot: 'bg-green-500 border-2 border-green-500 shadow-lg shadow-green-200',
+        icon: 'text-white',
+        title: 'text-green-700',
+        connector: 'bg-green-300'
+      };
+    } else {
+      return {
+        dot: 'bg-gray-300 border-2 border-gray-300',
+        icon: 'text-gray-500',
+        title: 'text-gray-700',
+        connector: 'bg-gray-200'
+      };
+    }
   };
 
   const formatAddress = (address: { street: string; city: string; state: string; postalCode: string; country: string }) => {
@@ -409,7 +361,7 @@ export default function ShipmentDetailsPage() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <Badge className={getStatusColor(shipment.status)}>
+              <Badge className={getStatusBadgeColor(shipment.status)}>
                 {shipment.status.replace('_', ' ')}
               </Badge>
               
@@ -610,34 +562,76 @@ export default function ShipmentDetailsPage() {
           <TabsContent value="tracking">
             <Card className="border-0 logistics-shadow">
               <CardHeader>
-                <CardTitle>Tracking History</CardTitle>
+                <CardTitle className="flex items-center space-x-2 text-xl">
+                  <Clock className="h-6 w-6 text-red-600" />
+                  <span>Tracking History</span>
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {shipment.trackingEvents.map((event: { id: string; status: string; description: string; timestamp: Date; location?: { name: string; address: Address } }, index: number) => (
-                    <div key={event.id} className="flex space-x-4">
-                      <div className="flex flex-col items-center">
-                        <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-                        {index < shipment.trackingEvents.length - 1 && (
-                          <div className="w-0.5 h-12 bg-gray-300 mt-2"></div>
-                        )}
-                      </div>
-                      <div className="flex-1 pb-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-semibold text-gray-900">{event.status}</h4>
-                          <span className="text-sm text-gray-500">{formatDate(event.timestamp)}</span>
+                <div className="space-y-6">
+                  {shipment.trackingEvents.map((event: { id: string; status: string; description: string; timestamp: Date; location?: { name: string; address: Address } }, index: number) => {
+                    const colors = getStatusColor(event.status, index);
+                    const isCompleted = index === 0;
+                    const isDelivered = event.status.toLowerCase().includes('delivered');
+                    
+                    return (
+                      <div 
+                        key={event.id} 
+                        className={`flex space-x-4 transition-all duration-500 ease-in-out transform ${
+                          isCompleted || isDelivered ? 'animate-in slide-in-from-left-5' : 'opacity-70'
+                        }`}
+                        style={{
+                          animationDelay: `${index * 100}ms`,
+                          animationFillMode: 'both'
+                        }}
+                      >
+                        <div className="flex flex-col items-center">
+                          <div className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${colors.dot}`}>
+                            {(isCompleted || isDelivered) && (
+                              <div className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-25"></div>
+                            )}
+                            <div className={colors.icon}>
+                              {getStatusIcon(event.status)}
+                            </div>
+                          </div>
+                          {index < shipment.trackingEvents.length - 1 && (
+                            <div className={`w-0.5 h-16 mt-3 transition-all duration-500 ${colors.connector}`}></div>
+                          )}
                         </div>
-                        {event.description && (
-                          <p className="text-sm text-gray-600 mt-1">{event.description}</p>
-                        )}
-                        {event.location && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {event.location.name} - {formatAddress(event.location.address)}
-                          </p>
-                        )}
+                        <div className="flex-1 pb-6">
+                          <div className="flex items-start justify-between">
+                            <h4 className={`text-lg font-semibold transition-colors duration-300 ${colors.title}`}>
+                              {event.status}
+                              {isDelivered && (
+                                <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 animate-bounce">
+                                  ✅ Delivered
+                                </span>
+                              )}
+                            </h4>
+                            <span className="text-sm text-gray-500 font-medium">
+                              {formatDate(event.timestamp)}
+                            </span>
+                          </div>
+                          {event.description && (
+                            <p className="text-base text-gray-600 mt-2 leading-relaxed">
+                              {event.description}
+                            </p>
+                          )}
+                          {event.location && (
+                            <div className="flex items-center mt-3 text-sm text-gray-500">
+                              <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+                              <span>
+                                {typeof event.location === 'string' 
+                                  ? event.location 
+                                  : `${event.location.name} - ${formatAddress(event.location.address)}`
+                                }
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

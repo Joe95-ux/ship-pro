@@ -83,93 +83,47 @@ export default function EditShipmentPage() {
     try {
       setIsLoading(true);
       
-      // Try to fetch real shipment data from API
-      try {
-        const response = await fetch(`/api/shipments/${shipmentId}`);
-        if (response.ok) {
-          const shipmentData = await response.json();
-          const shipment = shipmentData.shipment;
-          
-          // Transform the API data to match the form structure
-          const editData: EditShipmentData = {
-            id: shipment.id,
-            trackingNumber: shipment.trackingNumber,
-            status: shipment.status,
-            senderName: shipment.senderName,
-            senderEmail: shipment.senderEmail,
-            senderPhone: shipment.senderPhone,
-            senderAddress: shipment.senderAddress,
-            receiverName: shipment.receiverName,
-            receiverEmail: shipment.receiverEmail,
-            receiverPhone: shipment.receiverPhone,
-            receiverAddress: shipment.receiverAddress,
-            serviceId: shipment.serviceId || shipment.service?.id || "1",
-            weight: shipment.weight,
-            dimensions: shipment.dimensions,
-            value: shipment.value,
-            description: shipment.description,
-            specialInstructions: shipment.specialInstructions,
-            estimatedCost: shipment.estimatedCost,
-            finalCost: shipment.finalCost,
-            currency: shipment.currency,
-            paymentStatus: shipment.paymentStatus
-          };
-          
-          setFormData(editData);
-          return;
-        }
-      } catch (error) {
-        console.log('Failed to fetch shipment from API, using fallback data');
+      const response = await fetch(`/api/shipments/${shipmentId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch shipment data');
       }
       
-      // Fallback to mock data if API fails
-      const mockData: EditShipmentData = {
-        id: shipmentId,
-        trackingNumber: `SP${shipmentId.slice(-9)}`,
-        status: "IN_TRANSIT",
-        senderName: "John Doe",
-        senderEmail: "john@example.com",
-        senderPhone: "+1-555-0123",
-        senderAddress: {
-          street: "123 Main St",
-          city: "New York",
-          state: "NY",
-          postalCode: "10001",
-          country: "USA"
-        },
-        receiverName: "Jane Smith",
-        receiverEmail: "jane@example.com",
-        receiverPhone: "+1-555-0456",
-        receiverAddress: {
-          street: "456 Oak Ave",
-          city: "Los Angeles",
-          state: "CA",
-          postalCode: "90210",
-          country: "USA"
-        },
-        serviceId: "1",
-        weight: 5.2,
-        dimensions: {
-          length: 30,
-          width: 20,
-          height: 15,
-          unit: "cm"
-        },
-        value: 150,
-        description: "Electronics - Laptop computer",
-        specialInstructions: "Handle with care - fragile electronics",
-        estimatedCost: 45.99,
-        finalCost: 45.99,
-        currency: "USD",
-        paymentStatus: "PAID"
+      const shipmentData = await response.json();
+      const shipment = shipmentData.shipment;
+      
+      // Transform the API data to match the form structure
+      const editData: EditShipmentData = {
+        id: shipment.id,
+        trackingNumber: shipment.trackingNumber,
+        status: shipment.status,
+        senderName: shipment.senderName,
+        senderEmail: shipment.senderEmail,
+        senderPhone: shipment.senderPhone,
+        senderAddress: shipment.senderAddress,
+        receiverName: shipment.receiverName,
+        receiverEmail: shipment.receiverEmail,
+        receiverPhone: shipment.receiverPhone,
+        receiverAddress: shipment.receiverAddress,
+        serviceId: shipment.serviceId || shipment.service?.id || "",
+        weight: shipment.weight,
+        dimensions: shipment.dimensions,
+        value: shipment.value,
+        description: shipment.description,
+        specialInstructions: shipment.specialInstructions,
+        estimatedCost: shipment.estimatedCost,
+        finalCost: shipment.finalCost,
+        currency: shipment.currency,
+        paymentStatus: shipment.paymentStatus
       };
-
-      setFormData(mockData);
+      
+      setFormData(editData);
+      
     } catch (error) {
       console.error('Failed to load shipment data:', error);
       toast({
         title: "Error",
-        description: "Failed to load shipment data",
+        description: "Failed to load shipment data. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -244,15 +198,15 @@ export default function EditShipmentPage() {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        await response.json();
         
         toast({
           title: "Shipment Updated!",
           description: `Shipment ${formData.trackingNumber} has been updated successfully.`,
         });
 
-        // Redirect back to shipment details
-        router.push(`/admin/shipments/${shipmentId}`);
+        // Redirect back to shipment details with refresh flag
+        router.push(`/admin/shipments/${shipmentId}?updated=${Date.now()}`);
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to update shipment');
@@ -654,7 +608,7 @@ export default function EditShipmentPage() {
                     id="finalCost"
                     type="number"
                     step="0.01"
-                    value={formData.finalCost}
+                    value={formData.finalCost || 0}
                     onChange={(e) => handleInputChange('finalCost', parseFloat(e.target.value) || 0)}
                   />
                 </div>
