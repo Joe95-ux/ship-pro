@@ -123,10 +123,10 @@ export default function TrackingPage() {
         status: "Delivered",
         description: "Package has been delivered successfully and signed by recipient",
         location: {
-          name: "Customer Address",
+          name: "123 Delivery St", // Use actual receiver address
           address: {
             city: "Los Angeles",
-            state: "CA",
+            state: "CA", 
             country: "USA"
           },
           coordinates: {
@@ -197,7 +197,27 @@ export default function TrackingPage() {
       { latitude: 41.8781, longitude: -87.6298 }, // Chicago
       { latitude: 34.0899, longitude: -118.3617 }, // LA Distribution
       { latitude: 34.0522, longitude: -118.2437 }  // Final destination
-    ]
+    ],
+    sender: {
+      name: "John Smith",
+      address: {
+        street: "456 Business Ave",
+        city: "New York",
+        state: "NY",
+        postalCode: "10001",
+        country: "USA"
+      }
+    },
+    receiver: {
+      name: "Jane Doe",
+      address: {
+        street: "123 Delivery St",
+        city: "Los Angeles",
+        state: "CA",
+        postalCode: "90210",
+        country: "USA"
+      }
+    }
   };
 
   // Sample in-transit package
@@ -262,7 +282,27 @@ export default function TrackingPage() {
       { latitude: 25.7617, longitude: -80.1918 }, // Miami
       { latitude: 41.8781, longitude: -87.6298 }, // Chicago
       { latitude: 34.0522, longitude: -118.2437 }  // Los Angeles (destination)
-    ]
+    ],
+    sender: {
+      name: "Miami Electronics",
+      address: {
+        street: "789 Tech Boulevard",
+        city: "Miami",
+        state: "FL",
+        postalCode: "33101",
+        country: "USA"
+      }
+    },
+    receiver: {
+      name: "Alex Johnson",
+      address: {
+        street: "567 Ocean Drive",
+        city: "Los Angeles",
+        state: "CA",
+        postalCode: "90401",
+        country: "USA"
+      }
+    }
   };
 
   // Generate dynamic tracking data for any valid tracking number
@@ -272,27 +312,38 @@ export default function TrackingPage() {
       { 
         name: "New York", 
         coords: { latitude: 40.7128, longitude: -74.0060 },
-        state: "NY"
+        state: "NY",
+        country: "USA"
       },
       { 
         name: "Chicago", 
         coords: { latitude: 41.8781, longitude: -87.6298 },
-        state: "IL"
+        state: "IL",
+        country: "USA"
       },
       { 
         name: "Los Angeles", 
         coords: { latitude: 34.0522, longitude: -118.2437 },
-        state: "CA"
+        state: "CA",
+        country: "USA"
       },
       { 
         name: "Miami", 
         coords: { latitude: 25.7617, longitude: -80.1918 },
-        state: "FL"
+        state: "FL",
+        country: "USA"
       },
       { 
-        name: "Denver", 
-        coords: { latitude: 39.7392, longitude: -104.9903 },
-        state: "CO"
+        name: "Mexico City", 
+        coords: { latitude: 19.4326, longitude: -99.1332 },
+        state: "CDMX",
+        country: "Mexico"
+      },
+      { 
+        name: "Tijuana", 
+        coords: { latitude: 32.5149, longitude: -117.0382 },
+        state: "BC",
+        country: "Mexico"
       }
     ];
 
@@ -306,13 +357,38 @@ export default function TrackingPage() {
 
     const progress = statusIndex * 25; // 0, 25, 50, 75, 100
 
+    // Generate receiver and sender data
+    const receiverNames = ["Sarah Wilson", "Mike Chen", "Emma Davis", "Alex Rodriguez", "Lisa Thompson"];
+    const senderNames = ["TechCorp Inc", "Fashion Boutique", "Sports Gear Pro", "Book Universe", "Garden Center"];
+    
+    const receiverName = receiverNames[numberValue % receiverNames.length];
+    const senderName = senderNames[numberValue % senderNames.length];
+    
+    const receiverAddress = {
+      street: `${100 + (numberValue % 999)} Delivery Ave`,
+      city: currentCity.name,
+      state: currentCity.state,
+      postalCode: currentCity.country === "Mexico" ? `${10000 + (numberValue % 89999)}` : `${10000 + (numberValue % 89999)}`,
+      country: currentCity.country
+    };
+    
+    const senderAddress = {
+      street: `${200 + (numberValue % 799)} Business Blvd`,
+      city: originCity.name,
+      state: originCity.state,
+      postalCode: originCity.country === "Mexico" ? `${20000 + (numberValue % 79999)}` : `${20000 + (numberValue % 79999)}`,
+      country: originCity.country
+    };
+
     return {
       trackingNumber,
       status: currentStatus,
       estimatedDelivery: new Date(Date.now() + (5 - statusIndex) * 24 * 60 * 60 * 1000).toISOString(),
       currentLocation: {
-        name: `${currentCity.name} Distribution Center, ${currentCity.state}`,
-        address: {
+        name: currentStatus === "DELIVERED" 
+          ? `${receiverAddress.street}, ${receiverAddress.city}, ${receiverAddress.state}`
+          : `${currentCity.name} Distribution Center, ${currentCity.state}`,
+        address: currentStatus === "DELIVERED" ? receiverAddress : {
           street: "Distribution Center",
           city: currentCity.name,
           state: currentCity.state,
@@ -325,14 +401,16 @@ export default function TrackingPage() {
         {
           id: "1",
           status: currentStatus === "DELIVERED" ? "Delivered" : formatStatus(currentStatus),
-          description: `Package is ${currentStatus.toLowerCase().replace('_', ' ')}`,
+          description: currentStatus === "DELIVERED" 
+            ? `Package delivered successfully to ${receiverName}` 
+            : `Package is ${currentStatus.toLowerCase().replace('_', ' ')}`,
           location: {
-            name: `${currentCity.name} Distribution Center`,
-            address: {
-              city: currentCity.name,
-              state: currentCity.state,
-              country: "USA"
-            },
+            name: currentStatus === "DELIVERED" 
+              ? `${receiverAddress.street}, ${receiverAddress.city}, ${receiverAddress.state}` 
+              : `${currentCity.name} Distribution Center`,
+            address: currentStatus === "DELIVERED" 
+              ? { city: receiverAddress.city, state: receiverAddress.state, country: receiverAddress.country }
+              : { city: currentCity.name, state: currentCity.state, country: "USA" },
             coordinates: currentCity.coords
           },
           timestamp: new Date().toISOString()
@@ -340,24 +418,47 @@ export default function TrackingPage() {
         {
           id: "2",
           status: "Package picked up",
-          description: "Package has been picked up from sender",
+          description: `Package picked up from ${senderName}`,
           location: {
             name: `${originCity.name} Origin Facility`,
             address: {
               city: originCity.name,
               state: originCity.state,
-              country: "USA"
+              country: originCity.country
             },
             coordinates: originCity.coords
           },
           timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
         }
-      ],
+      ].reverse(), // Reverse so most recent event is first (index 0)
       progress,
-      route: [
-        originCity.coords, // Origin
-        currentCity.coords, // Current/Destination
-      ]
+      route: (() => {
+        // Create a more realistic route with intermediate points
+        const route = [originCity.coords];
+        
+        // For cross-border shipments (US to Mexico), add border crossing point
+        if (originCity.country === "USA" && currentCity.country === "Mexico") {
+          // Add San Diego as border crossing point for LA to Mexico routes
+          if (originCity.name === "Los Angeles") {
+            route.push({ latitude: 32.7157, longitude: -117.1611 }); // San Diego
+          }
+          // Add El Paso for other US to Mexico routes
+          else {
+            route.push({ latitude: 31.7619, longitude: -106.4850 }); // El Paso
+          }
+        }
+        
+        route.push(currentCity.coords);
+        return route;
+      })(),
+      sender: {
+        name: senderName,
+        address: senderAddress
+      },
+      receiver: {
+        name: receiverName,
+        address: receiverAddress
+      }
     };
   };
 
@@ -793,9 +894,10 @@ export default function TrackingPage() {
                     
                     <div className="space-y-8">
                       {trackingData.events.map((event, index) => {
-                        const isCompleted = index === 0; // Most recent event is completed
-                        const isActive = index === 0 && trackingData.status !== 'DELIVERED';
-                        const isDelivered = trackingData.status === 'DELIVERED' && event.status.toLowerCase().includes('delivered');
+                        const isLatestEvent = index === 0; // First in display = most recent chronologically
+                        const isCompleted = isLatestEvent;
+                        const isActive = isLatestEvent;
+                        const isDelivered = event.status.toLowerCase().includes('delivered');
                         
                         return (
                           <div 
@@ -817,9 +919,9 @@ export default function TrackingPage() {
                                   ? 'bg-blue-400 border-4 border-white shadow-lg ring-4 ring-blue-100 animate-pulse' 
                                   : 'bg-gray-200 border-4 border-white shadow-md'
                               }`}>
-                                {(isCompleted || isDelivered) && index === 0 && (
-                                  <div className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-25"></div>
-                                )}
+                                                              {(isActive || (isCompleted && index === 0)) && (
+                                <div className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-25"></div>
+                              )}
                                 <div className={`text-sm ${
                                   isCompleted || isDelivered || isActive ? 'text-white' : 'text-gray-500'
                                 }`}>

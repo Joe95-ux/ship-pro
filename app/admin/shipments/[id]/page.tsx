@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { redirect, useParams, useSearchParams } from "next/navigation";
 import { 
@@ -77,33 +77,7 @@ export default function ShipmentDetailsPage() {
     }
   }, [user, isLoaded]);
 
-  useEffect(() => {
-    if (user?.publicMetadata.role === 'admin' && shipmentId) {
-      loadShipmentDetails();
-    }
-  }, [user, shipmentId]);
-
-  // Reload data when returning from edit page (detected by URL parameter)
-  useEffect(() => {
-    const updated = searchParams.get('updated');
-    if (updated && shipment) {
-      loadShipmentDetails();
-    }
-  }, [searchParams, shipment]);
-
-  // Reload data when page becomes visible (e.g., returning from edit page)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && shipment) {
-        loadShipmentDetails();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [shipment]);
-
-  const loadShipmentDetails = async () => {
+  const loadShipmentDetails = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -126,7 +100,37 @@ export default function ShipmentDetailsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [shipmentId]);
+
+  useEffect(() => {
+    if (user?.publicMetadata.role === 'admin' && shipmentId) {
+      loadShipmentDetails();
+    }
+  }, [user, shipmentId, loadShipmentDetails]);
+
+  // Reload data when returning from edit page (detected by URL parameter)
+  useEffect(() => {
+    const updated = searchParams.get('updated');
+    if (updated) {
+      loadShipmentDetails();
+      // Clear the updated parameter to prevent repeated calls
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('updated');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [searchParams, loadShipmentDetails]);
+
+  // Reload data when page becomes visible (e.g., returning from edit page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadShipmentDetails();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [loadShipmentDetails]);
 
   const generateReceiptData = (shipment: MockShipment): ReceiptData => {
     return {

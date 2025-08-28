@@ -59,6 +59,22 @@ export default function NewShipmentPage() {
     description: "",
     specialInstructions: "",
 
+    // Current Location
+    currentLocation: {
+      name: "",
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "USA"
+      },
+      coordinates: {
+        latitude: 0,
+        longitude: 0
+      }
+    },
+
     // Pricing
     estimatedCost: 0,
     currency: "USD"
@@ -103,6 +119,42 @@ export default function NewShipmentPage() {
         [field]: value
       }
     }));
+  };
+
+  const handleCurrentLocationChange = (field: string, value: string | number) => {
+    if (field.startsWith('address.')) {
+      const addressField = field.replace('address.', '');
+      setFormData(prev => ({
+        ...prev,
+        currentLocation: {
+          ...prev.currentLocation!,
+          address: {
+            ...prev.currentLocation!.address,
+            [addressField]: value
+          }
+        }
+      }));
+    } else if (field.startsWith('coordinates.')) {
+      const coordField = field.replace('coordinates.', '');
+      setFormData(prev => ({
+        ...prev,
+        currentLocation: {
+          ...prev.currentLocation!,
+          coordinates: {
+            ...prev.currentLocation!.coordinates!,
+            [coordField]: typeof value === 'string' ? parseFloat(value) || 0 : value
+          }
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        currentLocation: {
+          ...prev.currentLocation!,
+          [field]: value
+        }
+      }));
+    }
   };
 
   const handleDimensionChange = (field: string, value: number) => {
@@ -401,6 +453,112 @@ export default function NewShipmentPage() {
                       <SelectItem value="MEX">Mexico</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Current Location */}
+          <Card className="border-0 logistics-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <MapPin className="h-5 w-5 text-red-600" />
+                <span>Current Location</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="form-group">
+                <Label htmlFor="currentLocationName" className="form-label">Location Name *</Label>
+                <Input
+                  id="currentLocationName"
+                  value={formData.currentLocation?.name || ""}
+                  onChange={(e) => handleCurrentLocationChange('name', e.target.value)}
+                  placeholder="e.g., Origin Distribution Center"
+                  required
+                />
+              </div>
+              
+              <Separator />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2 form-group">
+                  <Label htmlFor="currentLocationStreet" className="form-label">Street Address</Label>
+                  <Input
+                    id="currentLocationStreet"
+                    value={formData.currentLocation?.address.street || ""}
+                    onChange={(e) => handleCurrentLocationChange('address.street', e.target.value)}
+                    placeholder="Street address"
+                  />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="currentLocationCity" className="form-label">City</Label>
+                  <Input
+                    id="currentLocationCity"
+                    value={formData.currentLocation?.address.city || ""}
+                    onChange={(e) => handleCurrentLocationChange('address.city', e.target.value)}
+                    placeholder="City"
+                  />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="currentLocationState" className="form-label">State</Label>
+                  <Input
+                    id="currentLocationState"
+                    value={formData.currentLocation?.address.state || ""}
+                    onChange={(e) => handleCurrentLocationChange('address.state', e.target.value)}
+                    placeholder="State"
+                  />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="currentLocationPostalCode" className="form-label">Postal Code</Label>
+                  <Input
+                    id="currentLocationPostalCode"
+                    value={formData.currentLocation?.address.postalCode || ""}
+                    onChange={(e) => handleCurrentLocationChange('address.postalCode', e.target.value)}
+                    placeholder="Postal Code"
+                  />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="currentLocationCountry" className="form-label">Country</Label>
+                  <Select 
+                    value={formData.currentLocation?.address.country || "USA"}
+                    onValueChange={(value) => handleCurrentLocationChange('address.country', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USA">United States</SelectItem>
+                      <SelectItem value="CAN">Canada</SelectItem>
+                      <SelectItem value="MEX">Mexico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-group">
+                  <Label htmlFor="currentLocationLat" className="form-label">Latitude (Optional)</Label>
+                  <Input
+                    id="currentLocationLat"
+                    type="number"
+                    step="any"
+                    value={formData.currentLocation?.coordinates?.latitude || ""}
+                    onChange={(e) => handleCurrentLocationChange('coordinates.latitude', e.target.value)}
+                    placeholder="e.g., 40.7128"
+                  />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="currentLocationLng" className="form-label">Longitude (Optional)</Label>
+                  <Input
+                    id="currentLocationLng"
+                    type="number"
+                    step="any"
+                    value={formData.currentLocation?.coordinates?.longitude || ""}
+                    onChange={(e) => handleCurrentLocationChange('coordinates.longitude', e.target.value)}
+                    placeholder="e.g., -74.0060"
+                  />
                 </div>
               </div>
             </CardContent>

@@ -83,6 +83,16 @@ export interface ShipmentCreateData {
   description: string;
   specialInstructions?: string;
 
+  // Location
+  currentLocation?: {
+    name: string;
+    address: Address;
+    coordinates?: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+
   // Pricing
   estimatedCost: number;
   currency?: string;
