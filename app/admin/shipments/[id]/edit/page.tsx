@@ -83,10 +83,49 @@ export default function EditShipmentPage() {
     try {
       setIsLoading(true);
       
-      // Mock shipment data for demo - in real app, this would be an API call
+      // Try to fetch real shipment data from API
+      try {
+        const response = await fetch(`/api/shipments/${shipmentId}`);
+        if (response.ok) {
+          const shipmentData = await response.json();
+          const shipment = shipmentData.shipment;
+          
+          // Transform the API data to match the form structure
+          const editData: EditShipmentData = {
+            id: shipment.id,
+            trackingNumber: shipment.trackingNumber,
+            status: shipment.status,
+            senderName: shipment.senderName,
+            senderEmail: shipment.senderEmail,
+            senderPhone: shipment.senderPhone,
+            senderAddress: shipment.senderAddress,
+            receiverName: shipment.receiverName,
+            receiverEmail: shipment.receiverEmail,
+            receiverPhone: shipment.receiverPhone,
+            receiverAddress: shipment.receiverAddress,
+            serviceId: shipment.serviceId || shipment.service?.id || "1",
+            weight: shipment.weight,
+            dimensions: shipment.dimensions,
+            value: shipment.value,
+            description: shipment.description,
+            specialInstructions: shipment.specialInstructions,
+            estimatedCost: shipment.estimatedCost,
+            finalCost: shipment.finalCost,
+            currency: shipment.currency,
+            paymentStatus: shipment.paymentStatus
+          };
+          
+          setFormData(editData);
+          return;
+        }
+      } catch (error) {
+        console.log('Failed to fetch shipment from API, using fallback data');
+      }
+      
+      // Fallback to mock data if API fails
       const mockData: EditShipmentData = {
         id: shipmentId,
-        trackingNumber: "SP123456789",
+        trackingNumber: `SP${shipmentId.slice(-9)}`,
         status: "IN_TRANSIT",
         senderName: "John Doe",
         senderEmail: "john@example.com",
@@ -175,21 +214,55 @@ export default function EditShipmentPage() {
     setIsSubmitting(true);
 
     try {
-      // In a real app, this would be an API call to update the shipment
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      toast({
-        title: "Shipment Updated!",
-        description: `Shipment ${formData.trackingNumber} has been updated successfully.`,
+      // Make API call to update the shipment
+      const response = await fetch(`/api/shipments/${shipmentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: formData.status,
+          senderName: formData.senderName,
+          senderEmail: formData.senderEmail,
+          senderPhone: formData.senderPhone,
+          senderAddress: formData.senderAddress,
+          receiverName: formData.receiverName,
+          receiverEmail: formData.receiverEmail,
+          receiverPhone: formData.receiverPhone,
+          receiverAddress: formData.receiverAddress,
+          serviceId: formData.serviceId,
+          weight: formData.weight,
+          dimensions: formData.dimensions,
+          value: formData.value,
+          description: formData.description,
+          specialInstructions: formData.specialInstructions,
+          estimatedCost: formData.estimatedCost,
+          finalCost: formData.finalCost,
+          currency: formData.currency,
+          paymentStatus: formData.paymentStatus
+        }),
       });
 
-      // Redirect back to shipment details
-      router.push(`/admin/shipments/${shipmentId}`);
+      if (response.ok) {
+        const result = await response.json();
+        
+        toast({
+          title: "Shipment Updated!",
+          description: `Shipment ${formData.trackingNumber} has been updated successfully.`,
+        });
+
+        // Redirect back to shipment details
+        router.push(`/admin/shipments/${shipmentId}`);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update shipment');
+      }
 
     } catch (error) {
+      console.error('Update shipment error:', error);
       toast({
         title: "Error",
-        description: "Failed to update shipment",
+        description: error instanceof Error ? error.message : "Failed to update shipment",
         variant: "destructive"
       });
     } finally {

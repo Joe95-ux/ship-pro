@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { auth } from '@clerk/nextjs/server';
+import { db } from '@/lib/db';
 
-const prisma = new PrismaClient();
-
-// Get single shipment
+// Get shipment by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
-    const { id } = await params;
     
     if (!userId) {
       return NextResponse.json(
@@ -20,15 +17,47 @@ export async function GET(
       );
     }
 
-    const shipment = await prisma.shipment.findUnique({
-      where: { id },
-      include: {
-        service: true,
-        trackingEvents: {
-          orderBy: { timestamp: 'asc' },
+    const { id } = await params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Shipment ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Find shipment by ID or tracking number
+    let shipment;
+    
+    // First try to find by ID (MongoDB ObjectID format - 24 characters hex)
+    if (id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)) {
+      shipment = await db.shipment.findUnique({
+        where: { id },
+        include: {
+          service: true,
+          trackingEvents: {
+            orderBy: {
+              timestamp: 'desc',
+            },
+          },
         },
-      },
-    });
+      });
+    }
+    
+    // If not found by ID, try to find by tracking number
+    if (!shipment) {
+      shipment = await db.shipment.findUnique({
+        where: { trackingNumber: id.toUpperCase() },
+        include: {
+          service: true,
+          trackingEvents: {
+            orderBy: {
+              timestamp: 'desc',
+            },
+          },
+        },
+      });
+    }
 
     if (!shipment) {
       return NextResponse.json(
@@ -37,7 +66,9 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(shipment);
+    return NextResponse.json({
+      shipment,
+    });
 
   } catch (error) {
     console.error('Get shipment error:', error);
@@ -45,19 +76,16 @@ export async function GET(
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
-// Update shipment
+// Update shipment by ID (for admin use)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
-    const { id } = await params;
     
     if (!userId) {
       return NextResponse.json(
@@ -66,21 +94,32 @@ export async function PATCH(
       );
     }
 
+    const { id } = await params;
     const body = await request.json();
-    const {
-      status,
-      currentLocation,
-      estimatedDelivery,
-      actualDelivery,
-      finalCost,
-      paymentStatus,
-      specialInstructions
-    } = body;
 
-    // Check if shipment exists
-    const existingShipment = await prisma.shipment.findUnique({
-      where: { id },
-    });
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Shipment ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Find shipment first by ID or tracking number
+    let existingShipment;
+    
+    // First try to find by ID (MongoDB ObjectID format - 24 characters hex)
+    if (id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)) {
+      existingShipment = await db.shipment.findUnique({
+        where: { id },
+      });
+    }
+    
+    // If not found by ID, try to find by tracking number
+    if (!existingShipment) {
+      existingShipment = await db.shipment.findUnique({
+        where: { trackingNumber: id.toUpperCase() },
+      });
+    }
 
     if (!existingShipment) {
       return NextResponse.json(
@@ -89,39 +128,22 @@ export async function PATCH(
       );
     }
 
-    // Update shipment
-    const updatedShipment = await prisma.shipment.update({
-      where: { id },
+    // Update shipment using the found shipment's actual ID
+    const updatedShipment = await db.shipment.update({
+      where: { id: existingShipment.id },
       data: {
-        ...(status && { status }),
-        ...(currentLocation && { currentLocation }),
-        ...(estimatedDelivery && { estimatedDelivery: new Date(estimatedDelivery) }),
-        ...(actualDelivery && { actualDelivery: new Date(actualDelivery) }),
-        ...(finalCost && { finalCost }),
-        ...(paymentStatus && { paymentStatus }),
-        ...(specialInstructions && { specialInstructions }),
+        ...body,
         updatedAt: new Date(),
       },
       include: {
         service: true,
         trackingEvents: {
-          orderBy: { timestamp: 'asc' },
+          orderBy: {
+            timestamp: 'desc',
+          },
         },
       },
     });
-
-    // Create tracking event if status changed
-    if (status && status !== existingShipment.status) {
-      await prisma.trackingEvent.create({
-        data: {
-          shipmentId: id,
-          status: `Status updated to ${status}`,
-          description: `Shipment status changed from ${existingShipment.status} to ${status}`,
-          location: currentLocation,
-          timestamp: new Date(),
-        },
-      });
-    }
 
     return NextResponse.json({
       message: 'Shipment updated successfully',
@@ -134,19 +156,16 @@ export async function PATCH(
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
-// Delete shipment
+// Delete shipment by ID (for admin use)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
-    const { id } = await params;
     
     if (!userId) {
       return NextResponse.json(
@@ -155,10 +174,31 @@ export async function DELETE(
       );
     }
 
-    // Check if shipment exists
-    const existingShipment = await prisma.shipment.findUnique({
-      where: { id },
-    });
+    const { id } = await params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Shipment ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Find shipment first by ID or tracking number
+    let existingShipment;
+    
+    // First try to find by ID (MongoDB ObjectID format - 24 characters hex)
+    if (id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)) {
+      existingShipment = await db.shipment.findUnique({
+        where: { id },
+      });
+    }
+    
+    // If not found by ID, try to find by tracking number
+    if (!existingShipment) {
+      existingShipment = await db.shipment.findUnique({
+        where: { trackingNumber: id.toUpperCase() },
+      });
+    }
 
     if (!existingShipment) {
       return NextResponse.json(
@@ -167,18 +207,19 @@ export async function DELETE(
       );
     }
 
-    // Delete tracking events first (cascade delete)
-    await prisma.trackingEvent.deleteMany({
-      where: { shipmentId: id },
+    // Delete tracking events first (foreign key constraint)
+    await db.trackingEvent.deleteMany({
+      where: { shipmentId: existingShipment.id },
     });
 
-    // Delete shipment
-    await prisma.shipment.delete({
-      where: { id },
+    // Delete shipment using the found shipment's actual ID
+    const deletedShipment = await db.shipment.delete({
+      where: { id: existingShipment.id },
     });
 
     return NextResponse.json({
       message: 'Shipment deleted successfully',
+      shipment: deletedShipment,
     });
 
   } catch (error) {
@@ -187,7 +228,5 @@ export async function DELETE(
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

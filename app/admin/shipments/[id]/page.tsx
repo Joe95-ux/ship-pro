@@ -82,10 +82,22 @@ export default function ShipmentDetailsPage() {
     try {
       setIsLoading(true);
       
-      // Mock shipment data for demo
+      // Try to fetch real shipment data from API
+      try {
+        const response = await fetch(`/api/shipments/${shipmentId}`);
+        if (response.ok) {
+          const shipmentData = await response.json();
+          setShipment(shipmentData.shipment);
+          return;
+        }
+      } catch (error) {
+        console.log('Failed to fetch shipment from API, using mock data');
+      }
+      
+      // Fallback to mock shipment data for demo
       const mockShipment = {
         id: shipmentId,
-        trackingNumber: "SP123456789",
+        trackingNumber: `SP${shipmentId.slice(-9)}`, // Generate tracking number based on ID
         status: "IN_TRANSIT",
         senderName: "John Doe",
         senderEmail: "john@example.com",

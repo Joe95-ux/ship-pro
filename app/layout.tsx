@@ -53,14 +53,14 @@ export default function RootLayout({
                     </div>
                     <span className="text-xl font-bold">Logistica Falcon</span>
                   </div>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-400 text-base">
                     Professional shipping and logistics services with real-time tracking and competitive rates.
                   </p>
                 </div>
                 
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Services</h3>
-                  <ul className="space-y-2 text-sm text-gray-400">
+                  <ul className="space-y-2 text-base text-gray-400">
                     <li><a href="/services" className="hover:text-white transition-colors">Express Shipping</a></li>
                     <li><a href="/services" className="hover:text-white transition-colors">Freight Services</a></li>
                     <li><a href="/services" className="hover:text-white transition-colors">International Shipping</a></li>
@@ -70,7 +70,7 @@ export default function RootLayout({
                 
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Support</h3>
-                  <ul className="space-y-2 text-sm text-gray-400">
+                  <ul className="space-y-2 text-base text-gray-400">
                     <li><a href="/tracking" className="hover:text-white transition-colors">Track Package</a></li>
                     <li><a href="/contact" className="hover:text-white transition-colors">Contact Us</a></li>
                     <li><a href="/about" className="hover:text-white transition-colors">About Us</a></li>
@@ -80,7 +80,7 @@ export default function RootLayout({
                 
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Contact</h3>
-                  <ul className="space-y-2 text-sm text-gray-400">
+                  <ul className="space-y-2 text-base text-gray-400">
                     <li>📞 1-800-LOGISTICA</li>
                     <li>📧 info@logisticafalcon.com</li>
                     <li>📍 123 Logistics Ave, Ship City, SC 12345</li>
@@ -89,7 +89,7 @@ export default function RootLayout({
                 </div>
               </div>
               
-              <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+              <div className="border-t border-gray-800 mt-8 pt-8 text-center text-base text-gray-400">
                 <p>&copy; 2024 Logistica Falcon. All rights reserved. | Privacy Policy | Terms of Service</p>
               </div>
             </div>

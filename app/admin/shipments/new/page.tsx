@@ -115,28 +115,7 @@ export default function NewShipmentPage() {
     }));
   };
 
-  const calculateEstimatedCost = useCallback(() => {
-    // Find the selected service
-    const selectedService = services.find(service => service.id === formData.serviceId);
-    
-    if (selectedService && formData.weight > 0) {
-      // Extract base rate from service price (remove $ and convert to number)
-      const baseRate = parseFloat(selectedService.price?.replace('$', '') || '25');
-      const weightRate = formData.weight * 2;
-      const total = baseRate + weightRate;
-      
-      setFormData(prev => ({
-        ...prev,
-        estimatedCost: total
-      }));
-    }
-  }, [formData.weight, formData.serviceId, services]);
-
-  useEffect(() => {
-    if (formData.weight > 0 && formData.serviceId) {
-      calculateEstimatedCost();
-    }
-  }, [calculateEstimatedCost]);
+  // Removed automatic cost calculation - shipper will set cost manually based on current rates
 
 
 
@@ -512,15 +491,15 @@ export default function NewShipmentPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))}
                   />
                 </div>
-                <div className="form-group"   >
+                <div className="form-group">
                   <Label htmlFor="estimatedCost" className="form-label">Estimated Cost ($)</Label>
                   <Input
                     id="estimatedCost"
                     type="number"
                     step="0.01"
                     value={formData.estimatedCost}
-                    readOnly
-                    className="bg-gray-50"
+                    onChange={(e) => setFormData(prev => ({ ...prev, estimatedCost: parseFloat(e.target.value) || 0 }))}
+                    placeholder="Enter shipping cost"
                   />
                 </div>
               </div>
