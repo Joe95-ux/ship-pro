@@ -3,6 +3,7 @@ import { DM_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import Navigation from "@/components/Navigation";
 import { Toaster } from "@/components/ui/sonner";
+import { Phone, Mail, MapPin, Clock } from "lucide-react";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -80,11 +81,23 @@ export default function RootLayout({
                 
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Contact</h3>
-                  <ul className="space-y-2 text-base text-gray-400">
-                    <li>📞 1-800-LOGISTICA</li>
-                    <li>📧 info@logisticafalcon.com</li>
-                    <li>📍 123 Logistics Ave, Ship City, SC 12345</li>
-                    <li>🕐 24/7 Customer Support</li>
+                  <ul className="space-y-3 text-base text-gray-400">
+                    <li className="flex items-center space-x-2">
+                      <Phone className="h-4 w-4 text-red-400 flex-shrink-0" />
+                      <span>1-800-LOGISTICA</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <Mail className="h-4 w-4 text-red-400 flex-shrink-0" />
+                      <span>info@logisticafalcon.com</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-red-400 flex-shrink-0" />
+                      <span>123 Logistics Ave, Ship City, SC 12345</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <Clock className="h-4 w-4 text-red-400 flex-shrink-0" />
+                      <span>24/7 Customer Support</span>
+                    </li>
                   </ul>
                 </div>
               </div>
