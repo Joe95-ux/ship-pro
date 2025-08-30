@@ -18,8 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import GoogleMap, { MapPlaceholder } from "@/components/GoogleMap";
+import GoogleMap from "@/components/GoogleMap";
 import type { MapConfig, Address, Dimensions } from "@/lib/types";
+import getLatLonForCity from "@/lib/getLatLon";
 
 interface TrackingEvent {
   id: string;
@@ -88,15 +89,6 @@ export default function TrackingPage() {
     if (trackingData) {
       console.log("useEffect: Calling loadMap");
       loadMap();
-      // Set a timeout to ensure map loads or shows placeholder
-      const timeout = setTimeout(() => {
-        if (!mapConfig) {
-          console.log("useEffect: Timeout - calling loadMap again");
-          loadMap();
-        }
-      }, 1000);
-
-      return () => clearTimeout(timeout);
     } else {
       // Reset map config when no tracking data
       console.log("useEffect: Resetting map config");
@@ -104,332 +96,6 @@ export default function TrackingPage() {
       setMapLoaded(false);
     }
   }, [trackingData]);
-
-  // Generate dynamic tracking data that uses actual API data when available
-  const generateDynamicTrackingData = async (
-    trackingNumber: string,
-    apiData?: unknown
-  ): Promise<TrackingData> => {
-    // If we have API data, use it to get real addresses
-    let realReceiverAddress: Address | null = null;
-    let realSenderAddress: Address | null = null;
-    let realReceiverName = "";
-    let realSenderName = "";
-
-    if (apiData && typeof apiData === "object") {
-      console.log("API Data structure:", apiData);
-
-      // Handle different possible API response structures
-      let shipment = null;
-
-      if ("shipment" in apiData) {
-        shipment = (apiData as { shipment: unknown }).shipment;
-      } else if ("data" in apiData) {
-        shipment = (apiData as { data: unknown }).data;
-      } else {
-        // If apiData is the shipment directly
-        shipment = apiData;
-      }
-
-      if (shipment && typeof shipment === "object") {
-        console.log("Shipment data:", shipment);
-
-        // Extract receiver address
-        if ("receiverAddress" in shipment && shipment.receiverAddress) {
-          realReceiverAddress = shipment.receiverAddress as Address;
-          console.log("Found real receiver address:", realReceiverAddress);
-        }
-        if ("senderAddress" in shipment && shipment.senderAddress) {
-          realSenderAddress = shipment.senderAddress as Address;
-          console.log("Found real sender address:", realSenderAddress);
-        }
-        if (
-          "receiverName" in shipment &&
-          typeof shipment.receiverName === "string"
-        ) {
-          realReceiverName = shipment.receiverName;
-          console.log("Found real receiver name:", realReceiverName);
-        }
-        if (
-          "senderName" in shipment &&
-          typeof shipment.senderName === "string"
-        ) {
-          realSenderName = shipment.senderName;
-          console.log("Found real sender name:", realSenderName);
-        }
-      }
-    }
-
-    const statuses = [
-      "PENDING",
-      "PICKED_UP",
-      "IN_TRANSIT",
-      "OUT_FOR_DELIVERY",
-      "DELIVERED",
-    ];
-    const cities = [
-      {
-        name: "New York",
-        coords: { latitude: 40.7128, longitude: -74.006 },
-        state: "NY",
-        country: "USA",
-      },
-      {
-        name: "Chicago",
-        coords: { latitude: 41.8781, longitude: -87.6298 },
-        state: "IL",
-        country: "USA",
-      },
-      {
-        name: "Los Angeles",
-        coords: { latitude: 34.0522, longitude: -118.2437 },
-        state: "CA",
-        country: "USA",
-      },
-      {
-        name: "Miami",
-        coords: { latitude: 25.7617, longitude: -80.1918 },
-        state: "FL",
-        country: "USA",
-      },
-      {
-        name: "Mexico City",
-        coords: { latitude: 19.4326, longitude: -99.1332 },
-        state: "CDMX",
-        country: "Mexico",
-      },
-      {
-        name: "Tijuana",
-        coords: { latitude: 32.5149, longitude: -117.0382 },
-        state: "BC",
-        country: "Mexico",
-      },
-      {
-        name: "Chetumal",
-        coords: { latitude: 18.5141, longitude: -88.3038 },
-        state: "Quintana Roo",
-        country: "Mexico",
-      },
-    ];
-
-    // Use tracking number to determine status (pseudo-random but consistent)
-    const numberValue = parseInt(trackingNumber.replace(/\D/g, "")) || 0;
-    const statusIndex = numberValue % statuses.length;
-    const currentStatus = statuses[statusIndex];
-
-    // For better demo data, use specific cities based on tracking number
-    let currentCity, originCity;
-
-    if (trackingNumber.includes("SP111222333")) {
-      // Use Chetumal for this specific tracking number
-      currentCity = {
-        name: "Chetumal",
-        coords: { latitude: 18.5141, longitude: -88.3038 },
-        state: "Quintana Roo",
-        country: "Mexico",
-      };
-      originCity = {
-        name: "Los Angeles",
-        coords: { latitude: 34.0522, longitude: -118.2437 },
-        state: "CA",
-        country: "USA",
-      };
-    } else {
-      // Use regular city selection for other tracking numbers
-      const cityIndex = numberValue % cities.length;
-      currentCity = cities[cityIndex];
-      originCity = cities[(cityIndex + 1) % cities.length];
-    }
-
-    const progress = statusIndex * 25; // 0, 25, 50, 75, 100
-
-    // Use real data if available, otherwise generate mock data
-    const receiverNames = [
-      "Sarah Wilson",
-      "Mike Chen",
-      "Emma Davis",
-      "Alex Rodriguez",
-      "Lisa Thompson",
-    ];
-    const senderNames = [
-      "TechCorp Inc",
-      "Fashion Boutique",
-      "Sports Gear Pro",
-      "Book Universe",
-      "Garden Center",
-    ];
-
-    const receiverName =
-      realReceiverName || receiverNames[numberValue % receiverNames.length];
-    const senderName =
-      realSenderName || senderNames[numberValue % senderNames.length];
-
-    // Use real receiver address if available, otherwise use mock
-    const receiverAddress = realReceiverAddress || {
-      street: `${100 + (numberValue % 999)} Delivery Ave`,
-      city: currentCity.name,
-      state: currentCity.state,
-      postalCode:
-        currentCity.country === "Mexico"
-          ? `${10000 + (numberValue % 89999)}`
-          : `${10000 + (numberValue % 89999)}`,
-      country: currentCity.country,
-    };
-
-    // Use real sender address if available, otherwise use mock
-    const senderAddress = realSenderAddress || {
-      street: `${200 + (numberValue % 799)} Business Blvd`,
-      city: originCity.name,
-      state: originCity.state,
-      postalCode:
-        originCity.country === "Mexico"
-          ? `${20000 + (numberValue % 79999)}`
-          : `${20000 + (numberValue % 79999)}`,
-      country: originCity.country,
-    };
-
-    console.log("Using receiver address:", receiverAddress);
-    console.log("Using sender address:", senderAddress);
-
-    // Get coordinates from address using geocoding
-    const receiverCoords = await getCoordinatesFromAddress(receiverAddress);
-    const senderCoords = await getCoordinatesFromAddress(senderAddress);
-
-    return {
-      trackingNumber,
-      status: currentStatus,
-      estimatedDelivery: new Date(
-        Date.now() + (5 - statusIndex) * 24 * 60 * 60 * 1000
-      ).toISOString(),
-      currentLocation: {
-        name:
-          currentStatus === "DELIVERED"
-            ? `${receiverAddress.street}, ${receiverAddress.city}, ${receiverAddress.state}`
-            : `${currentCity.name} Distribution Center, ${currentCity.state}`,
-        address:
-          currentStatus === "DELIVERED"
-            ? receiverAddress
-            : {
-                street: "Distribution Center",
-                city: currentCity.name,
-                state: currentCity.state,
-                postalCode: "00000",
-                country: currentCity.country,
-              },
-        coordinates:
-          currentStatus === "DELIVERED" ? receiverCoords : currentCity.coords,
-      },
-      events: [
-        {
-          id: "1",
-          status:
-            currentStatus === "DELIVERED"
-              ? "Delivered"
-              : formatStatus(currentStatus),
-          description: (() => {
-            switch (currentStatus) {
-              case "DELIVERED":
-                return `Package has been delivered successfully and signed by ${receiverName}`;
-              case "OUT_FOR_DELIVERY":
-                return "Package is out for delivery and will arrive within the next few hours";
-              case "IN_TRANSIT":
-                return "Package is in transit to destination facility";
-              case "PICKED_UP":
-                return `Package has been picked up from ${senderName} and is en route to sorting facility`;
-              case "PENDING":
-                return "Shipment has been created and is pending pickup";
-              default:
-                return `Package is ${currentStatus
-                  .toLowerCase()
-                  .replace("_", " ")}`;
-            }
-          })(),
-          location: {
-            name:
-              currentStatus === "DELIVERED"
-                ? `${receiverAddress.street}, ${receiverAddress.city}, ${receiverAddress.state}`
-                : `${currentCity.name} Distribution Center`,
-            address:
-              currentStatus === "DELIVERED"
-                ? {
-                    city: receiverAddress.city,
-                    state: receiverAddress.state,
-                    country: receiverAddress.country,
-                  }
-                : {
-                    city: currentCity.name,
-                    state: currentCity.state,
-                    country: currentCity.country,
-                  },
-            coordinates:
-              currentStatus === "DELIVERED"
-                ? receiverCoords
-                : currentCity.coords,
-          },
-          timestamp: new Date().toISOString(),
-        },
-        {
-          id: "2",
-          status: "Package picked up",
-          description: `Package has been picked up from ${senderName} and processed at origin facility`,
-          location: {
-            name: `${senderAddress.city} Origin Facility`,
-            address: {
-              city: senderAddress.city,
-              state: senderAddress.state,
-              country: senderAddress.country,
-            },
-            coordinates: senderCoords,
-          },
-          timestamp: new Date(
-            Date.now() - 2 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-        },
-      ].reverse(), // Reverse so most recent event is first (index 0)
-      progress,
-      route: (() => {
-        // Create a more realistic route with actual coordinates
-        const route = [senderCoords];
-
-        // For cross-border shipments (US to Mexico), add border crossing point
-        if (
-          senderAddress.country === "USA" &&
-          receiverAddress.country === "Mexico"
-        ) {
-          // Add San Diego as border crossing point for CA to Mexico routes
-          if (senderAddress.state === "CA") {
-            route.push({ latitude: 32.7157, longitude: -117.1611 }); // San Diego
-          }
-          // Add El Paso for other US to Mexico routes
-          else {
-            route.push({ latitude: 31.7619, longitude: -106.485 }); // El Paso
-          }
-        }
-        // For Mexico to US shipments, add the same border points
-        else if (
-          senderAddress.country === "Mexico" &&
-          receiverAddress.country === "USA"
-        ) {
-          if (receiverAddress.state === "CA") {
-            route.push({ latitude: 32.7157, longitude: -117.1611 }); // San Diego
-          } else {
-            route.push({ latitude: 31.7619, longitude: -106.485 }); // El Paso
-          }
-        }
-
-        route.push(receiverCoords);
-        return route;
-      })(),
-      sender: {
-        name: senderName,
-        address: senderAddress,
-      },
-      receiver: {
-        name: receiverName,
-        address: receiverAddress,
-      },
-    };
-  };
 
   const handleTrackPackage = async () => {
     if (!trackingNumber.trim()) {
@@ -484,23 +150,18 @@ export default function TrackingPage() {
       }
 
       // Only show real user-created shipments, no mock data
-      if (apiData && (apiData.trackingNumber || apiData.shipment)) {
-        console.log("Using real API data");
-        const normalized = await generateDynamicTrackingData(
-          trackingNumber,
-          apiData
-        );
-        setTrackingData(normalized);
+      if (!apiData) {
+        toast({
+          title: "Shipment Not Found",
+          description: "No shipment found with this tracking number. Please check the tracking number or contact support.",
+          variant: "destructive"
+        });
         return;
       }
-
+      
       // Use the real API data from the database
       console.log("Using real shipment data from database");
-      const normalized = await generateDynamicTrackingData(
-        trackingNumber,
-        apiData
-      );
-      setTrackingData(normalized);
+      setTrackingData(apiData);
     } catch (error) {
       toast({
         title: "Error",
@@ -512,7 +173,7 @@ export default function TrackingPage() {
     }
   };
 
-  const loadMap = () => {
+  const loadMap = async () => {
     if (!trackingData) {
       console.log("loadMap: No tracking data available");
       return;
@@ -523,97 +184,43 @@ export default function TrackingPage() {
       trackingData
     );
 
-    // Create map configuration based on actual tracking event locations
-    const defaultCoords = { latitude: 40.7128, longitude: -74.006 }; // New York default
-    const currentLocationCoords =
-      trackingData.currentLocation?.coordinates || defaultCoords;
-    const currentLocationName =
-      trackingData.currentLocation?.name || "Unknown Location";
-
-    // Use route data if available, otherwise get coordinates from events
-    let polylineCoords;
-    if (trackingData.route && trackingData.route.length > 0) {
-      polylineCoords = trackingData.route;
+    // Get current location coordinates using your geolocation helper
+    let currentLocationCoords;
+    if (trackingData.currentLocation?.address) {
+      try {
+        const coords = await getLatLonForCity(
+          trackingData.currentLocation.address.city,
+          trackingData.currentLocation.address.country
+        );
+        currentLocationCoords = {
+          latitude: coords.lat,
+          longitude: coords.lon
+        };
+        console.log('Geolocated current location:', currentLocationCoords);
+      } catch (error) {
+        console.error('Failed to geolocate current location:', error);
+        currentLocationCoords = { latitude: 40.7128, longitude: -74.0060 }; // Default fallback
+      }
     } else {
-      // Get all event locations for polyline
-      const eventCoordinates = trackingData.events
-        .filter((event) => event.location?.coordinates)
-        .map((event) => event.location.coordinates)
-        .reverse(); // Reverse to show chronological order
-
-      polylineCoords =
-        eventCoordinates.length > 0
-          ? eventCoordinates
-          : [
-              { latitude: 40.7128, longitude: -74.006 }, // New York
-              { latitude: 41.8781, longitude: -87.6298 }, // Chicago
-              { latitude: 34.0522, longitude: -118.2437 }, // Los Angeles
-            ];
+      currentLocationCoords = trackingData.currentLocation?.coordinates || { latitude: 40.7128, longitude: -74.0060 };
     }
 
-    // Create markers from tracking events
-    const markers: Array<{
-      id: string;
-      position: { latitude: number; longitude: number };
-      title: string;
-      description: string;
-      type: "origin" | "current" | "destination" | "waypoint";
-    }> = [];
+    const currentLocationName = trackingData.currentLocation?.name || 'Current Package Location';
 
-    // Origin marker (first event - chronologically last in array)
-    const originEvent = trackingData.events[trackingData.events.length - 1];
-    if (originEvent?.location?.coordinates) {
-      markers.push({
-        id: "origin",
-        position: originEvent.location.coordinates,
-        title: "Origin",
-        description: originEvent.location.name || "Package pickup location",
-        type: "origin" as const,
-      });
-    }
-
-    // Current location marker
-    markers.push({
-      id: "current",
+    // Create only current location marker
+    const markers = [{
+      id: 'current',
       position: currentLocationCoords,
-      title: "Current Location",
+      title: '📦 Package Location',
       description: currentLocationName,
-      type: "current" as const,
-    });
-
-    // Destination marker (most recent event or estimated destination)
-    const latestEvent = trackingData.events[0];
-    if (
-      latestEvent?.location?.coordinates &&
-      trackingData.status === "DELIVERED"
-    ) {
-      markers.push({
-        id: "destination",
-        position: latestEvent.location.coordinates,
-        title: "Delivered",
-        description: latestEvent.location.name || "Delivery location",
-        type: "destination" as const,
-      });
-    } else {
-      // Use estimated destination based on route or default
-      const destinationCoords = polylineCoords[polylineCoords.length - 1] || {
-        latitude: 34.0522,
-        longitude: -118.2437,
-      };
-      markers.push({
-        id: "destination",
-        position: destinationCoords,
-        title: "Destination",
-        description: "Final delivery location",
-        type: "destination" as const,
-      });
-    }
+      type: 'current' as const
+    }];
 
     const config: MapConfig = {
       center: currentLocationCoords,
-      zoom: 6,
+      zoom: 8, // Closer zoom to focus on the package
       markers,
-      polyline: polylineCoords,
+      polyline: [] // No route line
     };
 
     console.log("loadMap: Setting map config:", config);
@@ -689,49 +296,28 @@ export default function TrackingPage() {
     });
   };
 
-  // Real geocoding function using OpenStreetMap Nominatim API (free, no API key required)
+  // Use Google Maps Geocoding API via helper function
   const getCoordinatesFromAddress = async (
     address: Address
   ): Promise<{ latitude: number; longitude: number }> => {
     try {
-      // Build search query
-      const searchQuery = `${address.street}, ${address.city}, ${address.state}, ${address.country}`;
-      console.log("Geocoding address:", searchQuery);
+      console.log("Geocoding address:", `${address.city}, ${address.country}`);
 
-      // Use OpenStreetMap Nominatim API (free, no API key required)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          searchQuery
-        )}&limit=1`,
-        {
-          headers: {
-            "Accept-Language": "en-US,en;q=0.9",
-            "User-Agent": "LogisticaFalcon/1.0",
-          },
-        }
-      );
+      // Use the helper function with city and country
+      const coords = await getLatLonForCity(address.city, address.country);
 
-      if (!response.ok) {
-        throw new Error(`Geocoding API error: ${response.status}`);
-      }
+      // Convert to the expected format (latitude/longitude instead of lat/lon)
+      const result = {
+        latitude: coords.lat,
+        longitude: coords.lon,
+      };
 
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        const result = data[0];
-        const coords = {
-          latitude: parseFloat(result.lat),
-          longitude: parseFloat(result.lon),
-        };
-        console.log("Geocoding result:", coords);
-        return coords;
-      } else {
-        throw new Error("No geocoding results found");
-      }
+      console.log("Geocoding result:", result);
+      return result;
     } catch (error) {
       console.error("Geocoding failed:", error);
 
-      // Only use fallback for known major cities as last resort
+      // Fallback for known major cities
       const majorCities: Record<
         string,
         { latitude: number; longitude: number }
@@ -756,7 +342,6 @@ export default function TrackingPage() {
         return fallbackCoords;
       }
 
-      // If no fallback available, throw error instead of using wrong coordinates
       throw new Error(
         `Unable to geocode address: ${address.city}, ${address.state}, ${address.country}`
       );
@@ -943,17 +528,10 @@ export default function TrackingPage() {
                     </div> */}
 
                     {mapConfig ? (
-                      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
-                        <GoogleMap
-                          config={mapConfig}
-                          className="w-full h-full"
-                        />
-                      ) : (
-                        <MapPlaceholder
-                          config={mapConfig}
-                          className="w-full h-full"
-                        />
-                      )
+                      <GoogleMap
+                        config={mapConfig}
+                        className="w-full h-full"
+                      />
                     ) : (
                       <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
                         <div className="text-center">

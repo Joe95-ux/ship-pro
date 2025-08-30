@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { Loader } from "@googlemaps/js-api-loader";
-import type { MapConfig, MapMarker } from '@/lib/types';
-
-// Add Google Maps types
-declare global {
-  interface Window {
-    google: typeof google;
-  }
-}
+import { useMemo, useState } from "react";
+import {
+  GoogleMap as GoogleMapComponent,
+  Marker,
+  InfoWindow,
+  useJsApiLoader,
+} from "@react-google-maps/api";
+import type { MapConfig } from "@/lib/types";
 
 interface GoogleMapProps {
   config: MapConfig;
@@ -18,186 +16,111 @@ interface GoogleMapProps {
 }
 
 export default function GoogleMap({ config, className = "", onMapLoad }: GoogleMapProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+  });
 
-  useEffect(() => {
-    const initMap = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  const [activeMarker, setActiveMarker] = useState<string | null>(null);
 
-        // Check if API key is available
-        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-        if (!apiKey) {
-          throw new Error('Google Maps API key not found');
-        }
-
-        // Initialize Google Maps loader
-        const loader = new Loader({
-          apiKey,
-          version: "weekly",
-          libraries: ["maps"]
-        });
-
-        const { Map } = await loader.importLibrary("maps") as google.maps.MapsLibrary;
-
-        if (!mapRef.current) return;
-
-        // Create map
-        const mapInstance = new Map(mapRef.current, {
-          center: { lat: config.center.latitude, lng: config.center.longitude },
-          zoom: config.zoom,
-          disableDefaultUI: false,
-          zoomControl: true,
-          mapTypeControl: false,
-          scaleControl: true,
-          streetViewControl: false,
-          rotateControl: false,
-          fullscreenControl: true
-        });
-
-        setMap(mapInstance);
-
-        // Add markers using regular Marker (more compatible)
-        config.markers.forEach((markerConfig) => {
-          const marker = new google.maps.Marker({
-            position: { lat: markerConfig.position.latitude, lng: markerConfig.position.longitude },
-            map: mapInstance,
-            title: markerConfig.title,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: getMarkerColor(markerConfig.type),
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 2
-            }
-          });
-
-          // Add info window
-          const infoWindow = new google.maps.InfoWindow({
-            content: `
-              <div style="padding: 10px; max-width: 200px;">
-                <h3 style="margin: 0 0 5px 0; font-size: 14px; font-weight: bold;">${markerConfig.title}</h3>
-                ${markerConfig.description ? `<p style="margin: 0; font-size: 12px; color: #666;">${markerConfig.description}</p>` : ''}
-              </div>
-            `
-          });
-
-          marker.addListener('click', () => {
-            infoWindow.open(mapInstance, marker);
-          });
-        });
-
-        // Add polyline for route
-        if (config.polyline && config.polyline.length > 1) {
-          new google.maps.Polyline({
-            path: config.polyline.map(coord => ({ lat: coord.latitude, lng: coord.longitude })),
-            geodesic: true,
-            strokeColor: '#D40511',
-            strokeOpacity: 1.0,
-            strokeWeight: 3,
-            map: mapInstance
-          });
-        }
-
-        // Fit bounds to show all markers
-        if (config.markers.length > 1) {
-          const bounds = new google.maps.LatLngBounds();
-          config.markers.forEach(marker => {
-            bounds.extend({ lat: marker.position.latitude, lng: marker.position.longitude });
-          });
-          mapInstance.fitBounds(bounds);
-        }
-
-        onMapLoad?.(mapInstance);
-        setIsLoading(false);
-
-      } catch (err) {
-        console.error('Error loading Google Maps:', err);
-        setError('Failed to load map. Please check your Google Maps API key and ensure it has the Maps JavaScript API enabled.');
-        setIsLoading(false);
-      }
-    };
-
-    initMap();
-  }, [config, onMapLoad]);
-
-  const getMarkerColor = (type: string) => {
-    const colors = {
-      origin: '#10B981',      // Green
-      destination: '#EF4444', // Red
-      current: '#F59E0B',     // Yellow
-      waypoint: '#6B7280'     // Gray
-    };
-    return colors[type as keyof typeof colors] || colors.waypoint;
-  };
-
-  if (error) {
-    return (
-      <div className={`flex items-center justify-center bg-gray-100 rounded-lg ${className}`}>
-        <div className="text-center p-8">
-          <div className="text-red-500 mb-2">⚠️</div>
-          <p className="text-red-600 text-sm">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`relative ${className}`}>
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg z-10">
-          <div className="text-center">
-            <div className="w-8 h-8 animate-spin rounded-full border-4 border-red-200 border-t-red-600 mx-auto mb-2"></div>
-            <p className="text-gray-600 text-sm">Loading map...</p>
-          </div>
-        </div>
-      )}
-      <div
-        ref={mapRef}
-        className={`w-full h-full rounded-lg ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-500`}
-      />
-    </div>
+  const mapCenter = useMemo(
+    () => ({
+      lat: config.center.latitude,
+      lng: config.center.longitude,
+    }),
+    [config.center]
   );
-}
 
-// Alternative component for when Google Maps is not available
-export function MapPlaceholder({ config, className = "" }: { config: MapConfig; className?: string }) {
+  const mapOptions = useMemo(
+    () => ({
+      disableDefaultUI: false,
+      zoomControl: true,
+      mapTypeControl: true,
+      scaleControl: true,
+      streetViewControl: false,
+      rotateControl: false,
+      fullscreenControl: true,
+    }),
+    []
+  );
+
+  // Only show current location marker
+  const currentLocationMarker = config.markers.find(marker => marker.type === 'current');
+
+  if (!isLoaded) return <p>Loading map…</p>;
+
   return (
-    <div className={`bg-gradient-to-br from-blue-50 to-green-50 rounded-lg flex items-center justify-center ${className}`}>
-      <div className="text-center p-8">
-        <div className="relative w-full max-w-md mx-auto mb-4">
-          {/* Simple route visualization */}
-          <div className="flex items-center justify-between">
-            {config.markers.map((marker, index) => (
-              <div key={marker.id} className="flex flex-col items-center">
-                <div 
-                  className={`w-4 h-4 rounded-full mb-2 ${
-                    marker.type === 'origin' ? 'bg-green-500' :
-                    marker.type === 'destination' ? 'bg-red-500' :
-                    marker.type === 'current' ? 'bg-yellow-500 animate-pulse' :
-                    'bg-gray-400'
-                  }`}
-                />
-                <span className="text-xs text-gray-600 text-center max-w-20 truncate">
-                  {marker.title}
-                </span>
-              </div>
-            ))}
-          </div>
-          {/* Route line */}
-          {config.markers.length > 1 && (
-            <div className="absolute top-2 left-2 right-2 h-0.5 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500"></div>
-          )}
-        </div>
-        <p className="text-gray-500 text-sm">
-          Interactive map will be available with Google Maps API key
-        </p>
-      </div>
+    <div className={`relative ${className}`} style={{ height: "100%", width: "100%", borderRadius: "8px", overflow: "hidden" }}>
+      <GoogleMapComponent
+        center={mapCenter}
+        zoom={config.zoom}
+        options={mapOptions}
+        onLoad={(map) => {
+          onMapLoad?.(map);
+        }}
+        mapContainerStyle={{ height: "100%", width: "100%", borderRadius: "8px", overflow: "hidden" }}
+      >
+        {/* Only render current location marker */}
+        {currentLocationMarker && (
+          <>
+            {/* Beeping animation circle */}
+            <Marker
+              position={{
+                lat: currentLocationMarker.position.latitude,
+                lng: currentLocationMarker.position.longitude,
+              }}
+              icon={{
+                url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+                  <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="32" cy="32" r="32" fill="#10B981" opacity="0.3">
+                      <animate attributeName="r" values="32;48;32" dur="2s" repeatCount="indefinite"/>
+                      <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                  </svg>
+                `),
+                scaledSize: new google.maps.Size(64, 64),
+                anchor: new google.maps.Point(32, 32)
+              }}
+            />
+            {/* Main parcel marker */}
+            <Marker
+              key={currentLocationMarker.id}
+              position={{
+                lat: currentLocationMarker.position.latitude,
+                lng: currentLocationMarker.position.longitude,
+              }}
+              title={currentLocationMarker.title}
+              onClick={() => setActiveMarker(currentLocationMarker.id)}
+              icon={{
+                url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="16" fill="#10B981"/>
+                    <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" fill="white"/>
+                    <path d="M8 12L16 16L24 12" stroke="#10B981" stroke-width="1.5"/>
+                    <path d="M16 16V24" stroke="#10B981" stroke-width="1.5"/>
+                  </svg>
+                `),
+                scaledSize: new google.maps.Size(32, 32),
+                anchor: new google.maps.Point(16, 16)
+              }}
+            >
+              {activeMarker === currentLocationMarker.id && (
+                <InfoWindow onCloseClick={() => setActiveMarker(null)}>
+                  <div style={{ padding: "10px", maxWidth: "200px" }}>
+                    <h3 style={{ margin: 0, fontSize: "14px", fontWeight: "bold" }}>
+                      📦 {currentLocationMarker.title}
+                    </h3>
+                    {currentLocationMarker.description && (
+                      <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: "#666" }}>
+                        {currentLocationMarker.description}
+                      </p>
+                    )}
+                  </div>
+                </InfoWindow>
+              )}
+            </Marker>
+          </>
+        )}
+      </GoogleMapComponent>
     </div>
   );
 }
