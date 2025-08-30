@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
-import type { ShipmentCreateData, Service } from "@/lib/types";
+import type { ShipmentCreateData, Service, ShipmentType, ShipmentMode, PaymentMode } from "@/lib/types";
 
 export default function NewShipmentPage() {
   const { user, isLoaded } = useUser();
@@ -48,6 +48,8 @@ export default function NewShipmentPage() {
 
     // Shipment Details
     serviceId: "",
+    shipmentType: "INTERNATIONAL_SHIPPING",
+    shipmentMode: "LAND_SHIPPING",
     weight: 0,
     dimensions: {
       length: 0,
@@ -77,7 +79,8 @@ export default function NewShipmentPage() {
 
     // Pricing
     estimatedCost: 0,
-    currency: "USD"
+    currency: "USD",
+    paymentMode: "CARD"
   });
 
   // Check if user is admin
@@ -573,7 +576,7 @@ export default function NewShipmentPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="form-group">
                   <Label htmlFor="service" className="form-label">Service Type *</Label>
                   <Select 
@@ -593,6 +596,44 @@ export default function NewShipmentPage() {
                   </Select>
                 </div>
                 <div className="form-group">
+                  <Label htmlFor="shipmentType" className="form-label">Shipment Type *</Label>
+                  <Select 
+                    value={formData.shipmentType}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, shipmentType: value as ShipmentType }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select shipment type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AIR_FREIGHT">Air Freight</SelectItem>
+                      <SelectItem value="INTERNATIONAL_SHIPPING">International Shipping</SelectItem>
+                      <SelectItem value="TRUCKLOAD">Truckload</SelectItem>
+                      <SelectItem value="VAN_TRANSPORT">Van Transport</SelectItem>
+                      <SelectItem value="SEA_TRANSPORT">Sea Transport</SelectItem>
+                      <SelectItem value="PET">Pet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="shipmentMode" className="form-label">Shipment Mode *</Label>
+                  <Select 
+                    value={formData.shipmentMode}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, shipmentMode: value as ShipmentMode }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select shipment mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SEA_TRANSPORT">Sea Transport</SelectItem>
+                      <SelectItem value="LAND_SHIPPING">Land Shipping</SelectItem>
+                      <SelectItem value="AIR_FREIGHT">Air Freight</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-group">
                   <Label htmlFor="weight" className="form-label">Weight (lbs) *</Label>
                   <Input
                     id="weight"
@@ -602,6 +643,31 @@ export default function NewShipmentPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, weight: parseFloat(e.target.value) || 0 }))}
                     required
                   />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="paymentMode" className="form-label">Payment Mode *</Label>
+                  <Select 
+                    value={formData.paymentMode}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMode: value as PaymentMode }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CASH">Cash</SelectItem>
+                      <SelectItem value="PAYPAL">PayPal</SelectItem>
+                      <SelectItem value="CARD">Card</SelectItem>
+                      <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
+                      <SelectItem value="APPLE_PAY">Apple Pay</SelectItem>
+                      <SelectItem value="ZELLE">Zelle</SelectItem>
+                      <SelectItem value="BACCS">BACCS</SelectItem>
+                      <SelectItem value="ESCROW">Escrow</SelectItem>
+                      <SelectItem value="GOOGLE_PAY">Google Pay</SelectItem>
+                      <SelectItem value="CASHAPP">Cash App</SelectItem>
+                      <SelectItem value="AMEX_GIFT_CARDS">AMEX Gift Cards</SelectItem>
+                      <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               

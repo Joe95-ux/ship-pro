@@ -42,6 +42,8 @@ interface MockShipment {
   receiverAddress: Address;
   serviceId: string;
   service: { name: string; description: string };
+  shipmentType?: string;
+  shipmentMode?: string;
   weight: number;
   dimensions: Dimensions;
   value: number;
@@ -51,6 +53,7 @@ interface MockShipment {
   finalCost: number;
   currency: string;
   paymentStatus: string;
+  paymentMode?: string;
   estimatedDelivery: Date;
   actualDelivery: Date | null;
   currentLocation: { name: string; address: Address };
@@ -469,6 +472,14 @@ export default function ShipmentDetailsPage() {
                       <p className="text-gray-900">{shipment.service.name}</p>
                     </div>
                     <div>
+                      <p className="text-sm font-medium text-gray-600">Shipment Type</p>
+                      <p className="text-gray-900">{shipment.shipmentType?.replace('_', ' ') || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Shipment Mode</p>
+                      <p className="text-gray-900">{shipment.shipmentMode?.replace('_', ' ') || 'N/A'}</p>
+                    </div>
+                    <div>
                       <p className="text-sm font-medium text-gray-600">Weight</p>
                       <p className="text-gray-900">{shipment.weight} lbs</p>
                     </div>
@@ -521,6 +532,10 @@ export default function ShipmentDetailsPage() {
                       <Badge className={shipment.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
                         {shipment.paymentStatus}
                       </Badge>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Payment Mode</p>
+                      <p className="text-gray-900">{shipment.paymentMode?.replace('_', ' ') || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-600">Created</p>

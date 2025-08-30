@@ -173,6 +173,73 @@ export default function TrackingPage() {
     }
   };
 
+  // Calculate realistic delivery time based on service type and distance
+  const calculateDeliveryTime = (senderAddress: Address, receiverAddress: Address, serviceName: string) => {
+    // Get coordinates for distance calculation
+    const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 3959; // Earth's radius in miles
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
+
+    // Service type delivery speeds (miles per day)
+    const serviceSpeeds = {
+      'Express': 800, // Express: 800 miles/day
+      'Standard': 400, // Standard: 400 miles/day
+      'Economy': 250,  // Economy: 250 miles/day
+      'Overnight': 1200, // Overnight: 1200 miles/day
+      'Same Day': 50,  // Same Day: 50 miles max
+    };
+
+    // Default to Standard if service not found
+    const speed = serviceSpeeds[serviceName as keyof typeof serviceSpeeds] || serviceSpeeds.Standard;
+    
+    // Calculate distance (simplified - using major city coordinates)
+    const majorCities: Record<string, { lat: number, lon: number }> = {
+      'New York': { lat: 40.7128, lon: -74.0060 },
+      'Los Angeles': { lat: 34.0522, lon: -118.2437 },
+      'Chicago': { lat: 41.8781, lon: -87.6298 },
+      'Miami': { lat: 25.7617, lon: -80.1918 },
+      'Mexico City': { lat: 19.4326, lon: -99.1332 },
+      'Chetumal': { lat: 18.5141, lon: -88.3038 },
+      'Tijuana': { lat: 32.5149, lon: -117.0382 },
+    };
+
+    const senderCoords = majorCities[senderAddress.city] || { lat: 40.7128, lon: -74.0060 };
+    const receiverCoords = majorCities[receiverAddress.city] || { lat: 34.0522, lon: -118.2437 };
+    
+    const distance = getDistance(senderCoords.lat, senderCoords.lon, receiverCoords.lat, receiverCoords.lon);
+    
+    // Calculate delivery days
+    let deliveryDays = Math.ceil(distance / speed);
+    
+    // Add buffer days for processing, customs, etc.
+    if (senderAddress.country !== receiverAddress.country) {
+      deliveryDays += 2; // International shipping
+    } else if (distance > 1000) {
+      deliveryDays += 1; // Long distance domestic
+    }
+    
+    // Minimum delivery time
+    deliveryDays = Math.max(deliveryDays, 1);
+    
+    // Calculate delivery date
+    const deliveryDate = new Date();
+    deliveryDate.setDate(deliveryDate.getDate() + deliveryDays);
+    
+    return {
+      estimatedDelivery: deliveryDate,
+      deliveryDays,
+      distance: Math.round(distance),
+      serviceSpeed: speed
+    };
+  };
+
   const loadMap = async () => {
     if (!trackingData) {
       console.log("loadMap: No tracking data available");
@@ -423,8 +490,25 @@ export default function TrackingPage() {
                       Tracking #{trackingData.trackingNumber}
                     </CardTitle>
                     <p className="text-base sm:text-lg text-gray-600 mt-2">
-                      Expected delivery:{" "}
-                      {formatDateTime(trackingData.estimatedDelivery)}
+                      {trackingData.sender && trackingData.receiver && trackingData.service ? (
+                        (() => {
+                          const deliveryInfo = calculateDeliveryTime(
+                            trackingData.sender.address,
+                            trackingData.receiver.address,
+                            trackingData.service.name
+                          );
+                          return (
+                            <>
+                              Expected delivery: {formatDateTime(deliveryInfo.estimatedDelivery)}
+                              <span className="text-sm text-gray-500 ml-2">
+                                ({deliveryInfo.deliveryDays} days, ~{deliveryInfo.distance} miles via {trackingData.service.name})
+                              </span>
+                            </>
+                          );
+                        })()
+                      ) : (
+                        `Expected delivery: ${formatDateTime(trackingData.estimatedDelivery)}`
+                      )}
                     </p>
                   </div>
                   <Badge

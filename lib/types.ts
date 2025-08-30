@@ -17,6 +17,34 @@ export type {
   PaymentStatus,
 };
 
+// New enum types (will be available after Prisma client regeneration)
+export type ShipmentType = 
+  | 'AIR_FREIGHT'
+  | 'INTERNATIONAL_SHIPPING'
+  | 'TRUCKLOAD'
+  | 'VAN_TRANSPORT'
+  | 'SEA_TRANSPORT'
+  | 'PET';
+
+export type ShipmentMode = 
+  | 'SEA_TRANSPORT'
+  | 'LAND_SHIPPING'
+  | 'AIR_FREIGHT';
+
+export type PaymentMode = 
+  | 'CASH'
+  | 'PAYPAL'
+  | 'CARD'
+  | 'MOBILE_MONEY'
+  | 'APPLE_PAY'
+  | 'ZELLE'
+  | 'BACCS'
+  | 'ESCROW'
+  | 'GOOGLE_PAY'
+  | 'CASHAPP'
+  | 'AMEX_GIFT_CARDS'
+  | 'BANK_TRANSFER';
+
 // Custom interfaces for API responses and form data
 export interface Address {
   street: string;
@@ -77,6 +105,8 @@ export interface ShipmentCreateData {
 
   // Shipment Details
   serviceId: string;
+  shipmentType?: ShipmentType;
+  shipmentMode?: ShipmentMode;
   weight: number;
   dimensions: Dimensions;
   value?: number;
@@ -96,6 +126,7 @@ export interface ShipmentCreateData {
   // Pricing
   estimatedCost: number;
   currency?: string;
+  paymentMode?: PaymentMode;
 
   // Dates
   estimatedDelivery?: Date | string;
@@ -351,6 +382,8 @@ export type ShipmentListItem = Pick<
   'id' | 'trackingNumber' | 'status' | 'senderName' | 'receiverName' | 'estimatedDelivery' | 'createdAt'
 > & {
   service: Pick<Service, 'name'>;
+  shipmentType?: string;
+  paymentMode?: string;
 };
 
 export type ContactFormListItem = Pick<

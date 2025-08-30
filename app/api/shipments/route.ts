@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
       receiverPhone,
       receiverAddress,
       serviceId,
+      shipmentType = 'INTERNATIONAL_SHIPPING',
+      shipmentMode = 'LAND_SHIPPING',
       weight,
       dimensions,
       value,
@@ -112,6 +114,7 @@ export async function POST(request: NextRequest) {
       specialInstructions,
       estimatedCost,
       currency = 'USD',
+      paymentMode = 'CARD',
       estimatedDelivery
     } = body;
 
@@ -140,6 +143,8 @@ export async function POST(request: NextRequest) {
         receiverPhone,
         receiverAddress,
         serviceId,
+        shipmentType,
+        shipmentMode,
         weight,
         dimensions,
         value,
@@ -148,6 +153,7 @@ export async function POST(request: NextRequest) {
         estimatedCost,
         currency,
         paymentStatus: 'PENDING',
+        paymentMode,
         estimatedDelivery: estimatedDelivery ? new Date(estimatedDelivery) : null,
         createdBy: userId,
       },

@@ -60,6 +60,8 @@ export default function AdminDashboard() {
           status: shipment.status,
           senderName: shipment.senderName,
           receiverName: shipment.receiverName,
+          shipmentType: shipment.shipmentType,
+          paymentMode: shipment.paymentMode,
           estimatedDelivery: new Date(shipment.estimatedDelivery || shipment.createdAt),
           createdAt: new Date(shipment.createdAt),
           service: { name: shipment.service?.name || 'Unknown Service' }
@@ -389,6 +391,8 @@ export default function AdminDashboard() {
                         <TableHead>Sender</TableHead>
                         <TableHead>Receiver</TableHead>
                         <TableHead>Service</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Payment</TableHead>
                         <TableHead>Est. Delivery</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Actions</TableHead>
@@ -413,6 +417,8 @@ export default function AdminDashboard() {
                           <TableCell>{shipment.senderName as string}</TableCell>
                           <TableCell>{shipment.receiverName as string}</TableCell>
                           <TableCell>{(shipment.service as { name: string }).name}</TableCell>
+                          <TableCell>{(shipment as ShipmentListItem).shipmentType?.replace('_', ' ') || 'N/A'}</TableCell>
+                          <TableCell>{(shipment as ShipmentListItem).paymentMode?.replace('_', ' ') || 'N/A'}</TableCell>
                           <TableCell>{formatDate(shipment.estimatedDelivery)}</TableCell>
                           <TableCell>{formatDate(shipment.createdAt)}</TableCell>
                           <TableCell>

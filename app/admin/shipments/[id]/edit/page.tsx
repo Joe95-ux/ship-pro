@@ -40,6 +40,8 @@ interface EditShipmentData {
     country: string;
   };
   serviceId: string;
+  shipmentType: string;
+  shipmentMode: string;
   weight: number;
   dimensions: {
     length: number;
@@ -68,6 +70,7 @@ interface EditShipmentData {
   finalCost: number;
   currency: string;
   paymentStatus: string;
+  paymentMode: string;
 }
 
 export default function EditShipmentPage() {
@@ -120,6 +123,8 @@ export default function EditShipmentPage() {
         receiverPhone: shipment.receiverPhone,
         receiverAddress: shipment.receiverAddress,
         serviceId: shipment.serviceId || shipment.service?.id || "",
+        shipmentType: shipment.shipmentType || "INTERNATIONAL_SHIPPING",
+        shipmentMode: shipment.shipmentMode || "LAND_SHIPPING",
         weight: shipment.weight,
         dimensions: shipment.dimensions,
         value: shipment.value,
@@ -142,7 +147,8 @@ export default function EditShipmentPage() {
         estimatedCost: shipment.estimatedCost,
         finalCost: shipment.finalCost,
         currency: shipment.currency,
-        paymentStatus: shipment.paymentStatus
+        paymentStatus: shipment.paymentStatus,
+        paymentMode: shipment.paymentMode || "CARD"
       };
       
       setFormData(editData);
@@ -250,6 +256,8 @@ export default function EditShipmentPage() {
           receiverPhone: formData.receiverPhone,
           receiverAddress: formData.receiverAddress,
           serviceId: formData.serviceId,
+          shipmentType: formData.shipmentType,
+          shipmentMode: formData.shipmentMode,
           weight: formData.weight,
           dimensions: formData.dimensions,
           value: formData.value,
@@ -259,7 +267,8 @@ export default function EditShipmentPage() {
           estimatedCost: formData.estimatedCost,
           finalCost: formData.finalCost,
           currency: formData.currency,
-          paymentStatus: formData.paymentStatus
+          paymentStatus: formData.paymentStatus,
+          paymentMode: formData.paymentMode
         }),
       });
 
@@ -709,6 +718,69 @@ export default function EditShipmentPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="form-group">
+                  <Label htmlFor="shipmentType">Shipment Type</Label>
+                  <Select 
+                    value={formData.shipmentType}
+                    onValueChange={(value) => handleInputChange('shipmentType', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AIR_FREIGHT">Air Freight</SelectItem>
+                      <SelectItem value="INTERNATIONAL_SHIPPING">International Shipping</SelectItem>
+                      <SelectItem value="TRUCKLOAD">Truckload</SelectItem>
+                      <SelectItem value="VAN_TRANSPORT">Van Transport</SelectItem>
+                      <SelectItem value="SEA_TRANSPORT">Sea Transport</SelectItem>
+                      <SelectItem value="PET">Pet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="shipmentMode">Shipment Mode</Label>
+                  <Select 
+                    value={formData.shipmentMode}
+                    onValueChange={(value) => handleInputChange('shipmentMode', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SEA_TRANSPORT">Sea Transport</SelectItem>
+                      <SelectItem value="LAND_SHIPPING">Land Shipping</SelectItem>
+                      <SelectItem value="AIR_FREIGHT">Air Freight</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="paymentMode">Payment Mode</Label>
+                  <Select 
+                    value={formData.paymentMode}
+                    onValueChange={(value) => handleInputChange('paymentMode', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CASH">Cash</SelectItem>
+                      <SelectItem value="PAYPAL">PayPal</SelectItem>
+                      <SelectItem value="CARD">Card</SelectItem>
+                      <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
+                      <SelectItem value="APPLE_PAY">Apple Pay</SelectItem>
+                      <SelectItem value="ZELLE">Zelle</SelectItem>
+                      <SelectItem value="BACCS">BACCS</SelectItem>
+                      <SelectItem value="ESCROW">Escrow</SelectItem>
+                      <SelectItem value="GOOGLE_PAY">Google Pay</SelectItem>
+                      <SelectItem value="CASHAPP">Cash App</SelectItem>
+                      <SelectItem value="AMEX_GIFT_CARDS">AMEX Gift Cards</SelectItem>
+                      <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
                   <Label htmlFor="weight">Weight (lbs)</Label>

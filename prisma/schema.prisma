@@ -68,6 +68,8 @@ model Shipment {
   // Shipment Details
   serviceId         String           @db.ObjectId
   service           Service          @relation(fields: [serviceId], references: [id])
+  shipmentType      ShipmentType     @default(INTERNATIONAL_SHIPPING)
+  shipmentMode      ShipmentMode     @default(LAND_SHIPPING)
   weight            Float
   dimensions        Dimensions
   value             Float?
@@ -79,6 +81,7 @@ model Shipment {
   finalCost         Float?
   currency          String           @default("USD")
   paymentStatus     PaymentStatus    @default(PENDING)
+  paymentMode       PaymentMode      @default(CARD)
   
   // Tracking Information
   estimatedDelivery DateTime?
@@ -164,4 +167,34 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+
+enum ShipmentType {
+  AIR_FREIGHT
+  INTERNATIONAL_SHIPPING
+  TRUCKLOAD
+  VAN_TRANSPORT
+  SEA_TRANSPORT
+  PET
+}
+
+enum ShipmentMode {
+  SEA_TRANSPORT
+  LAND_SHIPPING
+  AIR_FREIGHT
+}
+
+enum PaymentMode {
+  CASH
+  PAYPAL
+  CARD
+  MOBILE_MONEY
+  APPLE_PAY
+  ZELLE
+  BACCS
+  ESCROW
+  GOOGLE_PAY
+  CASHAPP
+  AMEX_GIFT_CARDS
+  BANK_TRANSFER
 }
