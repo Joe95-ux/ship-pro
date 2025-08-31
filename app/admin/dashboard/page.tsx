@@ -77,6 +77,7 @@ export default function DashboardPage() {
     to: new Date()
   });
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Check if user is admin
   useEffect(() => {
@@ -154,7 +155,7 @@ export default function DashboardPage() {
         clearTimeout(debounceTimeout);
       }
     };
-  }, [user, currentPage, filters.status, filters.search, filters.service, dateRange.from, dateRange.to]);
+  }, [user, currentPage, filters.status, filters.search, filters.service, filters.dateFrom, filters.dateTo]);
 
   const handleBulkDelete = async () => {
     if (selectedShipments.length === 0) return;
@@ -189,7 +190,59 @@ export default function DashboardPage() {
   const handleDateRangeChange = (range: { from?: Date; to?: Date } | undefined) => {
     if (range?.from && range?.to) {
       setDateRange({ from: range.from, to: range.to });
-      setFilters(prev => ({ ...prev, dateFrom: format(range.from!, "yyyy-MM-dd"), dateTo: format(range.to!, "yyyy-MM-dd") }));
+      // Update filters to trigger API call
+      setFilters(prev => ({ 
+        ...prev, 
+        dateFrom: format(range.from!, "yyyy-MM-dd"), 
+        dateTo: format(range.to!, "yyyy-MM-dd") 
+      }));
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      // Format dates for export
+      if (!dateRange.from || !dateRange.to) {
+        console.error('Date range not set');
+        return;
+      }
+      const dateFrom = format(dateRange.from, 'yyyy-MM-dd');
+      const dateTo = format(dateRange.to, 'yyyy-MM-dd');
+      
+      // Create export filters
+      const exportFilters = {
+        ...filters,
+        dateFrom,
+        dateTo
+      };
+      
+      // Get all shipments for export (no pagination)
+      const response = await fetch('/api/shipments/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exportFilters),
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `shipments-${dateFrom}-to-${dateTo}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Failed to export CSV');
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -268,9 +321,19 @@ export default function DashboardPage() {
                 </PopoverContent>
               </Popover>
               
-              <Button variant="outline" size="sm" className="shadow-sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="shadow-sm" 
+                onClick={handleExportCSV}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-600 border-t-transparent mr-2" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                {isExporting ? 'Exporting...' : 'Export CSV'}
               </Button>
               <Link href="/admin/shipments/new">
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
