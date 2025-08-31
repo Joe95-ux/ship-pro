@@ -361,3 +361,158 @@ export async function getAnalyticsData(): Promise<AnalyticsData> {
     };
   }
 }
+
+interface ChartData {
+  date: string;
+  shipments: number;
+  deliveries: number;
+}
+
+interface RevenueData {
+  service: string;
+  revenue: number;
+  percentage: number;
+  color: string;
+}
+
+export async function getChartData(timeframe: 'daily' | 'weekly' | 'monthly'): Promise<ChartData[]> {
+  try {
+    const data: ChartData[] = [];
+    
+    if (timeframe === 'daily') {
+      // Get data for the last 10 days
+      for (let i = 9; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+        
+        const [shipments, deliveries] = await Promise.all([
+          db.shipment.count({
+            where: { createdAt: { gte: startOfDay, lte: endOfDay } }
+          }),
+          db.shipment.count({
+            where: { 
+              status: 'DELIVERED',
+              createdAt: { gte: startOfDay, lte: endOfDay }
+            }
+          })
+        ]);
+        
+        data.push({
+          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          shipments,
+          deliveries
+        });
+      }
+    } else if (timeframe === 'weekly') {
+      // Get data for the last 4 weeks
+      for (let i = 3; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - (i * 7));
+        const startOfWeek = new Date(date.setDate(date.getDate() - date.getDay()));
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        
+        const [shipments, deliveries] = await Promise.all([
+          db.shipment.count({
+            where: { createdAt: { gte: startOfWeek, lte: endOfWeek } }
+          }),
+          db.shipment.count({
+            where: { 
+              status: 'DELIVERED',
+              createdAt: { gte: startOfWeek, lte: endOfWeek }
+            }
+          })
+        ]);
+        
+        data.push({
+          date: `Week ${4-i}`,
+          shipments,
+          deliveries
+        });
+      }
+    } else {
+      // Get data for the last 12 months
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+        const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+        
+        const [shipments, deliveries] = await Promise.all([
+          db.shipment.count({
+            where: { createdAt: { gte: startOfMonth, lte: endOfMonth } }
+          }),
+          db.shipment.count({
+            where: { 
+              status: 'DELIVERED',
+              createdAt: { gte: startOfMonth, lte: endOfMonth }
+            }
+          })
+        ]);
+        
+        data.push({
+          date: date.toLocaleDateString('en-US', { month: 'short' }),
+          shipments,
+          deliveries
+        });
+      }
+    }
+    
+    return data;
+  } catch (error) {
+    console.error("Error fetching chart data:", error);
+    return [];
+  }
+}
+
+export async function getRevenueData(): Promise<RevenueData[]> {
+  try {
+    // Get revenue by service type for the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const revenueByService = await db.shipment.groupBy({
+      by: ['serviceId'],
+      where: { createdAt: { gte: thirtyDaysAgo } },
+      _sum: { estimatedCost: true },
+      _count: true
+    });
+    
+    // Get service names
+    const serviceIds = revenueByService.map(item => item.serviceId);
+    const services = await db.service.findMany({
+      where: { id: { in: serviceIds } },
+      select: { id: true, name: true }
+    });
+    
+    // Create service map
+    const serviceMap = new Map(services.map(service => [service.id, service.name]));
+    
+    // Calculate total revenue
+    const totalRevenue = revenueByService.reduce((sum, item) => sum + (item._sum.estimatedCost || 0), 0);
+    
+    // Define colors for services
+    const colors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16", "#f97316"];
+    
+    const data: RevenueData[] = revenueByService.map((item, index) => {
+      const revenue = item._sum.estimatedCost || 0;
+      const percentage = totalRevenue > 0 ? (revenue / totalRevenue) * 100 : 0;
+      
+      return {
+        service: serviceMap.get(item.serviceId) || 'Unknown Service',
+        revenue: Math.round(revenue),
+        percentage: Math.round(percentage * 100) / 100,
+        color: colors[index % colors.length]
+      };
+    });
+    
+    // Sort by revenue (highest first)
+    return data.sort((a, b) => b.revenue - a.revenue);
+  } catch (error) {
+    console.error("Error fetching revenue data:", error);
+    return [];
+  }
+}

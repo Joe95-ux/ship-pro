@@ -1,235 +1,216 @@
 "use client";
 
-import React from 'react';
-import { Package, Calendar, MapPin, User, DollarSign, Truck } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import type { ReceiptData } from '@/lib/types';
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Printer } from "lucide-react";
+
+interface ReceiptData {
+  trackingNumber: string;
+  shipper: {
+    name: string;
+    phone: string;
+    address: string;
+    email: string;
+  };
+  receiver: {
+    name: string;
+    phone: string;
+    address: string;
+    email: string;
+  };
+  packages: Array<{
+    quantity: number;
+    pieceType: string;
+    description: string;
+    length: number;
+    width: number;
+    height: number;
+    weight: number;
+  }>;
+}
 
 interface ReceiptGeneratorProps {
   data: ReceiptData;
-  onPrint?: () => void;
 }
 
-type AddressType = {
-  street: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-}
+export function ReceiptGenerator({ data }: ReceiptGeneratorProps) {
+  const [isPrinting, setIsPrinting] = useState(false);
 
-export default function ReceiptGenerator({ data, onPrint }: ReceiptGeneratorProps) {
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handlePrint = () => {
+    setIsPrinting(true);
+    window.print();
+    setTimeout(() => setIsPrinting(false), 1000);
   };
 
-  const formatAddress = (address: AddressType) => {
-    return `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
-  };
+  // Calculate totals
+  const totalVolumetricWeight = data.packages.reduce((sum, pkg) => {
+    const volume = (pkg.length * pkg.width * pkg.height) / 6000; // Standard volumetric calculation
+    return sum + volume;
+  }, 0);
 
-  const getPaymentStatusColor = (status: string) => {
-    switch (status) {
-      case 'PAID':
-        return 'bg-green-100 text-green-800';
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'FAILED':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const totalVolume = data.packages.reduce((sum, pkg) => {
+    const volume = (pkg.length * pkg.width * pkg.height) / 1000000; // Convert to cubic meters
+    return sum + volume;
+  }, 0);
+
+  const totalActualWeight = data.packages.reduce((sum, pkg) => sum + pkg.weight, 0);
 
   return (
-    <div className="max-w-5xl mx-auto bg-white" id="receipt">
-      {/* Header */}
-      <div className="text-center mb-8 border-b pb-6">
-        <div className="flex items-center justify-center space-x-2 mb-4">
-          <div className="w-12 h-12 dhl-gradient rounded-lg flex items-center justify-center">
-            <Truck className="h-6 w-6 text-white" />
-          </div>
-          <div className="text-left">
-            <h1 className="text-2xl font-bold text-gray-900">Logistica Falcon</h1>
-            <p className="text-sm text-gray-600">Professional Shipping Solutions</p>
-          </div>
-        </div>
-        
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">SHIPPING RECEIPT</h2>
-        <p className="text-gray-600">Receipt for Tracking Number: {data.trackingNumber}</p>
+    <div className="max-w-4xl mx-auto bg-white">
+      {/* Print Button */}
+      <div className="flex justify-end mb-6 print:hidden">
+        <Button onClick={handlePrint} disabled={isPrinting} className="bg-blue-600 hover:bg-blue-700">
+          <Printer className="h-4 w-4 mr-2" />
+          {isPrinting ? "Printing..." : "Print Receipt"}
+        </Button>
       </div>
 
-      <div className="space-y-6">
-        {/* Receipt Info */}
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
-              <Package className="h-4 w-4 mr-2" />
-              Receipt Details
-            </h3>
-            <div className="space-y-1 text-sm">
-              <p><span className="font-medium">Receipt ID:</span> {data.shipmentId}</p>
-              <p><span className="font-medium">Date Issued:</span> {formatDate(data.createdAt)}</p>
-              <p><span className="font-medium">Service:</span> {data.service}</p>
+      {/* Receipt Document */}
+      <div className="border border-gray-300 bg-white p-8 print:p-6">
+        {/* Header Section */}
+        <div className="flex justify-between items-start mb-8 border-b border-gray-300 pb-6">
+          {/* Left Side - Logo and Company Info */}
+          <div className="flex items-start space-x-4">
+            {/* Logo */}
+            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="text-white text-2xl font-bold">LF</div>
+            </div>
+            
+            {/* Company Details */}
+            <div>
+              <div className="text-blue-600 font-bold text-2xl mb-1">LOGISTICA FALCON</div>
+              <div className="text-blue-500 text-sm mb-2">LOGISTICA</div>
+              <div className="text-sm text-gray-600 mb-1">Fast and reliable global freight | Logistica Falcon</div>
+              <div className="text-sm text-gray-600 mb-2">Fast, Secure & Reliable shipping</div>
+              <div className="text-sm text-blue-600">https://logisticafalcon.com</div>
             </div>
           </div>
-          
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
-              <DollarSign className="h-4 w-4 mr-2" />
-              Payment Information
-            </h3>
-            <div className="space-y-1 text-sm">
-              <p><span className="font-medium">Amount:</span> {data.currency} {data.cost.toFixed(2)}</p>
-              <p><span className="font-medium">Status:</span> 
-                <Badge className={`ml-2 ${getPaymentStatusColor(data.paymentStatus)}`}>
-                  {data.paymentStatus}
-                </Badge>
-              </p>
+
+          {/* Right Side - Barcode and Tracking */}
+          <div className="text-right">
+            <div className="border border-black p-3 mb-2">
+              <div className="h-12 bg-black mb-2"></div>
+              <div className="text-sm font-mono">{data.trackingNumber}</div>
             </div>
           </div>
         </div>
 
-        <Separator />
-
-        {/* Sender & Receiver */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="border-gray-200">
-            <CardHeader className="pb-3">
-              <h3 className="font-semibold text-gray-900 flex items-center">
-                <User className="h-4 w-4 mr-2" />
-                Sender
-              </h3>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-1 text-sm">
-                <p className="font-medium">{data.sender.name}</p>
-                <p className="text-gray-600">{formatAddress(data.sender.address)}</p>
+        {/* Shipper and Receiver Details */}
+        <div className="grid grid-cols-2 gap-8 mb-8 border-b border-gray-300 pb-6">
+          {/* Shipper Details */}
+          <div>
+            <div className="font-bold text-lg mb-4 text-gray-800">SHIPPER DETAILS:</div>
+            <div className="space-y-2 text-sm">
+              <div>
+                <div className="font-semibold text-gray-900">{data.shipper.name}</div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-gray-200">
-            <CardHeader className="pb-3">
-              <h3 className="font-semibold text-gray-900 flex items-center">
-                <MapPin className="h-4 w-4 mr-2" />
-                Receiver
-              </h3>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-1 text-sm">
-                <p className="font-medium">{data.receiver.name}</p>
-                <p className="text-gray-600">{formatAddress(data.receiver.address)}</p>
+              <div>
+                <div className="text-gray-600">{data.shipper.phone}</div>
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <div className="text-gray-600">{data.shipper.address}</div>
+              </div>
+              <div>
+                <div className="text-gray-600">{data.shipper.email}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Receiver Details */}
+          <div>
+            <div className="font-bold text-lg mb-4 text-gray-800">RECEIVER DETAILS:</div>
+            <div className="space-y-2 text-sm">
+              <div>
+                <div className="font-semibold text-gray-900">{data.receiver.name}</div>
+              </div>
+              <div>
+                <div className="text-gray-600">{data.receiver.phone}</div>
+              </div>
+              <div>
+                <div className="text-gray-600">{data.receiver.address}</div>
+              </div>
+              <div>
+                <div className="text-gray-600">{data.receiver.email}</div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <Separator />
 
         {/* Package Details */}
         <div>
-          <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-            <Package className="h-4 w-4 mr-2" />
-            Package Information
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="font-medium text-gray-600">Weight</p>
-              <p className="text-gray-900">{data.weight} lbs</p>
+          <div className="font-bold text-lg mb-4 text-gray-800">PACKAGE DETAILS:</div>
+          
+          {/* Package Table */}
+          <div className="border border-gray-300 mb-6">
+            {/* Table Header */}
+            <div className="grid grid-cols-7 bg-gray-700 text-white text-sm font-semibold">
+              <div className="p-3 border-r border-gray-600">Qty.</div>
+              <div className="p-3 border-r border-gray-600">Piece Type</div>
+              <div className="p-3 border-r border-gray-600">Description</div>
+              <div className="p-3 border-r border-gray-600">Length(cm)</div>
+              <div className="p-3 border-r border-gray-600">Width(cm)</div>
+              <div className="p-3 border-r border-gray-600">Height(cm)</div>
+              <div className="p-3">Weight (kg)</div>
             </div>
-            <div>
-              <p className="font-medium text-gray-600">Length</p>
-              <p className="text-gray-900">{data.dimensions.length} {data.dimensions.unit}</p>
+
+            {/* Table Body */}
+            {data.packages.length > 0 ? (
+              data.packages.map((pkg, index) => (
+                <div key={index} className="grid grid-cols-7 text-sm border-t border-gray-300">
+                  <div className="p-3 border-r border-gray-300">{pkg.quantity}</div>
+                  <div className="p-3 border-r border-gray-300">{pkg.pieceType}</div>
+                  <div className="p-3 border-r border-gray-300">{pkg.description}</div>
+                  <div className="p-3 border-r border-gray-300">{pkg.length}</div>
+                  <div className="p-3 border-r border-gray-300">{pkg.width}</div>
+                  <div className="p-3 border-r border-gray-300">{pkg.height}</div>
+                  <div className="p-3">{pkg.weight}</div>
+                </div>
+              ))
+            ) : (
+              <div className="grid grid-cols-7 text-sm border-t border-gray-300">
+                <div className="p-3 border-r border-gray-300"></div>
+                <div className="p-3 border-r border-gray-300"></div>
+                <div className="p-3 border-r border-gray-300"></div>
+                <div className="p-3 border-r border-gray-300"></div>
+                <div className="p-3 border-r border-gray-300"></div>
+                <div className="p-3 border-r border-gray-300"></div>
+                <div className="p-3"></div>
+              </div>
+            )}
+          </div>
+
+          {/* Summary Information */}
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="text-left">
+              <div className="font-semibold text-gray-700">Total Volumetric Weight : {totalVolumetricWeight.toFixed(2)}kg.</div>
             </div>
-            <div>
-              <p className="font-medium text-gray-600">Width</p>
-              <p className="text-gray-900">{data.dimensions.width} {data.dimensions.unit}</p>
+            <div className="text-center">
+              <div className="font-semibold text-gray-700">Total Volume : {totalVolume.toFixed(2)}cu. m.</div>
             </div>
-            <div>
-              <p className="font-medium text-gray-600">Height</p>
-              <p className="text-gray-900">{data.dimensions.height} {data.dimensions.unit}</p>
+            <div className="text-right">
+              <div className="font-semibold text-gray-700">Total Actual Weight : {totalActualWeight.toFixed(2)}kg.</div>
             </div>
           </div>
-        </div>
-
-        <Separator />
-
-        {/* Cost Breakdown */}
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-            <DollarSign className="h-4 w-4 mr-2" />
-            Cost Breakdown
-          </h3>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Shipping Cost:</span>
-              <span>{data.currency} {data.cost.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Tax:</span>
-              <span>{data.currency} 0.00</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between font-semibold">
-              <span>Total:</span>
-              <span>{data.currency} {data.cost.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Terms and Conditions */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-semibold text-gray-900 mb-2">Terms and Conditions</h4>
-          <ul className="text-xs text-gray-600 space-y-1">
-            <li>• This receipt serves as proof of payment for shipping services.</li>
-            <li>• Delivery times are estimates and not guaranteed.</li>
-            <li>• Insurance claims must be filed within 30 days of delivery.</li>
-            <li>• For questions or concerns, contact customer service at 1-800-LOGISTICA.</li>
-            <li>• Track your package at logisticafalcon.com/tracking using tracking number {data.trackingNumber}.</li>
-          </ul>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center text-xs text-gray-500 border-t pt-4">
-          <p>Logistica Falcon Inc. | 123 Logistics Ave, Ship City, SC 12345</p>
-          <p>Phone: 1-800-LOGISTICA | Email: support@logisticafalcon.com</p>
-          <p>This receipt was generated on {formatDate(new Date())}</p>
         </div>
       </div>
 
-      {/* Print Button */}
-      {onPrint && (
-        <div className="text-center mt-8 no-print">
-          <button
-            onClick={onPrint}
-            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors print:hidden"
-          >
-            Print Receipt
-          </button>
-        </div>
-      )}
-
-      <style jsx>{`
+      {/* Print Styles */}
+      <style jsx global>{`
         @media print {
-          .no-print {
+          @page {
+            margin: 0.5in;
+            size: A4;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+          }
+          .print\\:hidden {
             display: none !important;
           }
-          
-          #receipt {
-            max-width: none !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
+          .print\\:p-6 {
+            padding: 1.5rem !important;
           }
         }
       `}</style>

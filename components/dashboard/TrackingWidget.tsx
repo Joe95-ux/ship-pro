@@ -217,34 +217,92 @@ export function TrackingWidget() {
 
   if (isLoading) {
     return (
-      <Card className="border-0 shadow-sm bg-white">
+      <Card className="border-0 shadow-sm bg-white h-full">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg font-semibold text-gray-900">Tracking Delivery</CardTitle>
               <p className="text-sm text-gray-600">Track your package in real-time</p>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>View Details</DropdownMenuItem>
-                <DropdownMenuItem>Export Data</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        <CardContent className="space-y-4 flex-1">
+          {/* Search Input Skeleton */}
+          <div className="flex space-x-2">
+            <div className="flex-1 h-10 bg-gray-200 rounded animate-pulse"></div>
+            <div className="w-10 h-10 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+
+          {/* Shipment Info Skeleton */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                <div className="h-3 bg-gray-200 rounded w-48 animate-pulse"></div>
+              </div>
+              <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
             </div>
-            <div className="animate-pulse">
-              <div className="h-32 bg-gray-200 rounded"></div>
+
+            {/* Progress Bar Skeleton */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
+                <span>Delivery Progress</span>
+                <div className="h-4 bg-gray-200 rounded w-8 animate-pulse"></div>
+              </div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                </div>
+                <div className="relative flex items-center">
+                  <div className="w-full h-1 bg-gray-200 rounded-full">
+                    <div className="h-1 bg-gray-300 rounded-full w-1/3 animate-pulse"></div>
+                  </div>
+                  <div className="relative flex justify-between w-full">
+                    {[0, 33, 66, 100].map((step, index) => (
+                      <div
+                        key={index}
+                        className={`w-6 h-6 rounded-full border-2 ${
+                          index <= 1 ? "bg-gray-300 border-gray-300" : "bg-white border-gray-300"
+                        } animate-pulse`}
+                      ></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Map Skeleton */}
+            <div className="h-72 rounded-lg bg-gray-200 animate-pulse flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-8 h-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-600 mx-auto mb-2"></div>
+                <p className="text-xs text-gray-500">Loading map...</p>
+              </div>
+            </div>
+
+            {/* Timeline Skeleton */}
+            <div className="relative">
+              <div className="absolute left-5 top-6 bottom-0 w-0.5 bg-gray-200"></div>
+              <div className="space-y-6">
+                {[1, 2, 3].map((index) => (
+                  <div key={index} className="relative flex items-start space-x-4">
+                    <div className="relative z-10 flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div>
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                      <div className="h-3 bg-gray-200 rounded w-48 animate-pulse"></div>
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 bg-gray-200 rounded mr-2 animate-pulse"></div>
+                        <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </CardContent>

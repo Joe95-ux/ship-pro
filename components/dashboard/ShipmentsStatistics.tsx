@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getChartData, getRevenueData } from "@/lib/dashboard-actions";
 
 interface ChartData {
   date: string;
@@ -27,114 +28,28 @@ export function ShipmentsStatistics({ totalDeliveries }: ShipmentsStatisticsProp
   const [timeframe, setTimeframe] = useState('daily');
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Generate realistic shipment data based on timeframe
-    const generateData = () => {
-      const data: ChartData[] = [];
-      
-      if (timeframe === 'daily') {
-        // Generate data for the last 10 days with realistic business patterns
-        for (let i = 9; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          
-          // Business logic: More shipments on weekdays, fewer on weekends
-          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-          const baseShipments = isWeekend ? 15 : 25;
-          const baseDeliveries = isWeekend ? 12 : 20;
-          
-          // Add some realistic variation
-          const variation = Math.sin(i * 0.8) * 8;
-          const shipments = Math.max(5, Math.round(baseShipments + variation));
-          const deliveries = Math.max(3, Math.round(baseDeliveries + variation * 0.7));
-          
-          data.push({
-            date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            shipments,
-            deliveries
-          });
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+                 if (activeTab === 'shipments') {
+           const data = await getChartData(timeframe as 'daily' | 'weekly' | 'monthly');
+          setChartData(data);
+        } else {
+          const data = await getRevenueData();
+          setRevenueData(data);
         }
-      } else if (timeframe === 'weekly') {
-        // Generate data for the last 4 weeks
-        for (let i = 3; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - (i * 7));
-          
-          const shipments = Math.floor(Math.random() * 40) + 60; // 60-100 range
-          const deliveries = Math.floor(Math.random() * 35) + 45; // 45-80 range
-          
-          data.push({
-            date: `Week ${4-i}`,
-            shipments,
-            deliveries
-          });
-        }
-      } else {
-        // Generate data for the last 12 months
-        for (let i = 11; i >= 0; i--) {
-          const date = new Date();
-          date.setMonth(date.getMonth() - i);
-          
-          // Seasonal variation: higher in holiday months
-          const month = date.getMonth();
-          const isHolidaySeason = month === 11 || month === 0; // Dec, Jan
-          const baseShipments = isHolidaySeason ? 120 : 80;
-          const baseDeliveries = isHolidaySeason ? 100 : 65;
-          
-          const shipments = Math.floor(Math.random() * 40) + baseShipments;
-          const deliveries = Math.floor(Math.random() * 35) + baseDeliveries;
-          
-          data.push({
-            date: date.toLocaleDateString('en-US', { month: 'short' }),
-            shipments,
-            deliveries
-          });
-        }
+      } catch (error) {
+        console.error('Failed to load chart data:', error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setChartData(data);
     };
 
-    // Generate revenue data by service type
-    const generateRevenueData = () => {
-      const services = [
-        { name: "International Shipping", color: "#3b82f6" },
-        { name: "Air Freight", color: "#10b981" },
-        { name: "Sea Transport", color: "#f59e0b" },
-        { name: "Truckload", color: "#8b5cf6" },
-        { name: "Van Transport", color: "#ef4444" }
-      ];
-
-      const data: RevenueData[] = [];
-      let total = 0;
-
-      // Generate revenue for each service
-      services.forEach((service, index) => {
-        const baseRevenue = 40000 + (index * 15000);
-        const variation = Math.random() * 20000;
-        const revenue = Math.round(baseRevenue + variation);
-        total += revenue;
-
-        data.push({
-          service: service.name,
-          revenue,
-          percentage: 0, // Will be calculated after total
-          color: service.color
-        });
-      });
-
-      // Calculate percentages
-      data.forEach(item => {
-        item.percentage = Math.round((item.revenue / total) * 100);
-      });
-
-      setRevenueData(data);
-    };
-
-    generateData();
-    generateRevenueData();
-  }, [timeframe]);
+    loadData();
+  }, [activeTab, timeframe]);
 
   const maxValue = Math.max(...chartData.map(d => Math.max(d.shipments, d.deliveries)), 1);
   const totalRevenue = revenueData.reduce((sum, item) => sum + item.revenue, 0);
@@ -198,55 +113,66 @@ export function ShipmentsStatistics({ totalDeliveries }: ShipmentsStatisticsProp
                   <span>{Math.round(maxValue * 0.2)}</span>
                   <span className="font-medium">0</span>
                 </div>
-                
-                {/* Chart Area */}
-                <div className="flex-1 min-w-0">
-                  <div className="relative h-48 sm:h-64">
-                    {/* Grid Lines */}
-                    <div className="absolute inset-0">
-                      {[0, 20, 40, 60, 80, 100].map((percent) => (
-                        <div
-                          key={percent}
-                          className="absolute w-full border-t border-gray-100"
-                          style={{ top: `${100 - (percent / 100) * 100}%` }}
-                        ></div>
-                      ))}
-                    </div>
-                    
-                    {/* Bars */}
-                    <div className="relative h-full flex items-end justify-between space-x-1">
-                      {chartData.map((data, index) => (
-                        <div key={index} className="flex-1 flex items-end space-x-0.5 sm:space-x-1">
-                          <div 
-                            className="flex-1 bg-blue-600 rounded-t transition-all duration-300 hover:bg-blue-700"
-                            style={{ 
-                              height: `${(data.shipments / maxValue) * 100}%`,
-                              minHeight: '4px'
-                            }}
-                            title={`Shipments: ${data.shipments}`}
-                          ></div>
-                          <div 
-                            className="flex-1 bg-green-500 rounded-t transition-all duration-300 hover:bg-green-600"
-                            style={{ 
-                              height: `${(data.deliveries / maxValue) * 100}%`,
-                              minHeight: '4px'
-                            }}
-                            title={`Deliveries: ${data.deliveries}`}
-                          ></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* X-axis labels */}
-                  <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
-                    {chartData.map((data, index) => (
-                      <span key={index} className="font-medium text-center flex-1 truncate px-0.5">
-                        {data.date}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+
+                                 {/* Chart Area */}
+                 <div className="flex-1 min-w-0">
+                   <div className="relative h-48 sm:h-64">
+                     {isLoading ? (
+                       <div className="h-full flex items-center justify-center">
+                         <div className="text-center">
+                           <div className="w-8 h-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 mx-auto mb-2"></div>
+                           <p className="text-xs text-gray-500">Loading chart data...</p>
+                         </div>
+                       </div>
+                     ) : (
+                       <>
+                         {/* Grid Lines */}
+                         <div className="absolute inset-0">
+                           {[0, 20, 40, 60, 80, 100].map((percent) => (
+                             <div
+                               key={percent}
+                               className="absolute w-full border-t border-gray-100"
+                               style={{ top: `${100 - (percent / 100) * 100}%` }}
+                             ></div>
+                           ))}
+                         </div>
+                         
+                         {/* Bars */}
+                         <div className="relative h-full flex items-end justify-between space-x-1">
+                           {chartData.map((data, index) => (
+                             <div key={index} className="flex-1 flex items-end space-x-0.5 sm:space-x-1">
+                               <div 
+                                 className="flex-1 bg-blue-600 rounded-t transition-all duration-300 hover:bg-blue-700"
+                                 style={{ 
+                                   height: `${(data.shipments / maxValue) * 100}%`,
+                                   minHeight: '4px'
+                                 }}
+                                 title={`Shipments: ${data.shipments}`}
+                               ></div>
+                               <div 
+                                 className="flex-1 bg-green-500 rounded-t transition-all duration-300 hover:bg-green-600"
+                                 style={{ 
+                                   height: `${(data.deliveries / maxValue) * 100}%`,
+                                   minHeight: '4px'
+                                 }}
+                                 title={`Deliveries: ${data.deliveries}`}
+                               ></div>
+                             </div>
+                           ))}
+                         </div>
+                       </>
+                     )}
+                   </div>
+                   
+                   {/* X-axis labels */}
+                   <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
+                     {chartData.map((data, index) => (
+                       <span key={index} className="font-medium text-center flex-1 truncate px-0.5">
+                         {data.date}
+                       </span>
+                     ))}
+                   </div>
+                 </div>
               </div>
               
               {/* Summary Stats */}
@@ -269,86 +195,97 @@ export function ShipmentsStatistics({ totalDeliveries }: ShipmentsStatisticsProp
 
           {activeTab === 'revenue' && (
             <div className="space-y-6 flex-1 flex flex-col">
-              {/* Total Revenue Display */}
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900 mb-2">
-                  ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="flex items-center justify-center space-x-1">
-                  <span className="text-sm text-green-600 font-medium">+2.52%</span>
-                  <span className="text-sm text-gray-600">vs last month</span>
-                </div>
-              </div>
-
-              {/* Pie Chart and Legend Container */}
-              <div className="flex-1 flex flex-col lg:flex-row items-center gap-6">
-                {/* Pie Chart */}
-                <div className="flex-shrink-0">
-                  <h4 className="text-sm font-medium text-gray-700 text-center mb-4">Revenue Distribution</h4>
-                  <div className="relative w-64 h-64">
-                    <svg className="w-full h-full" viewBox="0 0 100 100">
-                      {/* Pie Chart */}
-                      {(() => {
-                        let currentAngle = 0;
-                        return revenueData.map((item, index) => {
-                          const angle = (item.percentage / 100) * 360;
-                          const startAngle = currentAngle;
-                          const endAngle = currentAngle + angle;
-                          
-                          const x1 = 50 + 40 * Math.cos((startAngle - 90) * Math.PI / 180);
-                          const y1 = 50 + 40 * Math.sin((startAngle - 90) * Math.PI / 180);
-                          const x2 = 50 + 40 * Math.cos((endAngle - 90) * Math.PI / 180);
-                          const y2 = 50 + 40 * Math.sin((endAngle - 90) * Math.PI / 180);
-                          
-                          const largeArcFlag = angle > 180 ? 1 : 0;
-                          
-                          const pathData = [
-                            `M 50 50`,
-                            `L ${x1} ${y1}`,
-                            `A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-                            `Z`
-                          ].join(' ');
-                          
-                          currentAngle += angle;
-                          
-                          return (
-                            <path
-                              key={index}
-                              d={pathData}
-                              fill={item.color}
-                              stroke="#fff"
-                              strokeWidth="1"
-                            />
-                          );
-                        });
-                      })()}
-                      
-                      {/* Center circle */}
-                      <circle cx="50" cy="50" r="15" fill="#fff" stroke="#e5e7eb" strokeWidth="1" />
-                    </svg>
+              {isLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-8 h-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 mx-auto mb-2"></div>
+                    <p className="text-xs text-gray-500">Loading revenue data...</p>
                   </div>
                 </div>
-                
-                {/* Legend */}
-                <div className="flex-1 space-y-3 min-w-0">
-                  <h4 className="text-sm font-medium text-gray-700 lg:hidden">Revenue Breakdown</h4>
-                  {revenueData.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3 min-w-0">
-                        <div 
-                          className="w-4 h-4 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: item.color }}
-                        ></div>
-                        <span className="text-gray-700 font-medium truncate">{item.service}</span>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <div className="font-semibold text-gray-900">${item.revenue.toLocaleString()}</div>
-                        <div className="text-gray-500 text-xs">{item.percentage}%</div>
+              ) : (
+                <>
+                  {/* Total Revenue Display */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-900 mb-2">
+                      ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <div className="flex items-center justify-center space-x-1">
+                      <span className="text-sm text-green-600 font-medium">+2.52%</span>
+                      <span className="text-sm text-gray-600">vs last month</span>
+                    </div>
+                  </div>
+
+                  {/* Pie Chart and Legend Container */}
+                  <div className="flex-1 flex flex-col lg:flex-row items-center gap-6">
+                    {/* Pie Chart */}
+                    <div className="flex-shrink-0">
+                      <h4 className="text-sm font-medium text-gray-700 text-center mb-4">Revenue Distribution</h4>
+                      <div className="relative w-64 h-64">
+                        <svg className="w-full h-full" viewBox="0 0 100 100">
+                          {/* Pie Chart */}
+                          {(() => {
+                            let currentAngle = 0;
+                            return revenueData.map((item, index) => {
+                              const angle = (item.percentage / 100) * 360;
+                              const startAngle = currentAngle;
+                              const endAngle = currentAngle + angle;
+                              
+                              const x1 = 50 + 40 * Math.cos((startAngle - 90) * Math.PI / 180);
+                              const y1 = 50 + 40 * Math.sin((startAngle - 90) * Math.PI / 180);
+                              const x2 = 50 + 40 * Math.cos((endAngle - 90) * Math.PI / 180);
+                              const y2 = 50 + 40 * Math.sin((endAngle - 90) * Math.PI / 180);
+                              
+                              const largeArcFlag = angle > 180 ? 1 : 0;
+                              
+                              const pathData = [
+                                `M 50 50`,
+                                `L ${x1} ${y1}`,
+                                `A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+                                `Z`
+                              ].join(' ');
+                              
+                              currentAngle += angle;
+                              
+                              return (
+                                <path
+                                  key={index}
+                                  d={pathData}
+                                  fill={item.color}
+                                  stroke="#fff"
+                                  strokeWidth="1"
+                                />
+                              );
+                            });
+                          })()}
+                          
+                          {/* Center circle */}
+                          <circle cx="50" cy="50" r="15" fill="#fff" stroke="#e5e7eb" strokeWidth="1" />
+                        </svg>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    
+                    {/* Legend */}
+                    <div className="flex-1 space-y-3 min-w-0">
+                      <h4 className="text-sm font-medium text-gray-700 lg:hidden">Revenue Breakdown</h4>
+                      {revenueData.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <div 
+                              className="w-4 h-4 rounded-full flex-shrink-0" 
+                              style={{ backgroundColor: item.color }}
+                            ></div>
+                            <span className="text-gray-700 font-medium truncate">{item.service}</span>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <div className="font-semibold text-gray-900">${item.revenue.toLocaleString()}</div>
+                            <div className="text-gray-500 text-xs">{item.percentage}%</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Summary Stats */}
               <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
