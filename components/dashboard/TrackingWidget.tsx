@@ -151,17 +151,17 @@ export function TrackingWidget() {
     switch (status.toLowerCase()) {
       case "picked_up":
       case "package picked up":
-        return <Package className="h-3 w-3 text-blue-500" />;
+        return <Package className="h-5 w-5 text-blue-500" />;
       case "in_transit":
       case "in transit":
-        return <Truck className="h-3 w-3 text-yellow-500" />;
+        return <Truck className="h-5 w-5 text-yellow-500" />;
       case "out_for_delivery":
       case "out for delivery":
-        return <MapPin className="h-3 w-3 text-orange-500" />;
+        return <MapPin className="h-5 w-5 text-orange-500" />;
       case "delivered":
-        return <CheckCircle className="h-3 w-3 text-green-500" />;
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
       default:
-        return <Clock className="h-3 w-3 text-gray-500" />;
+        return <Clock className="h-5 w-5 text-gray-500" />;
     }
   };
 

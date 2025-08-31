@@ -94,8 +94,16 @@ export async function POST(request: NextRequest) {
       shipment.finalCost || '',
       shipment.currency,
       shipment.paymentStatus,
-      shipment.createdAt.toISOString().split('T')[0],
-      shipment.updatedAt.toISOString().split('T')[0]
+      shipment.createdAt.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      }),
+      shipment.updatedAt.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      })
     ]);
 
     const csvContent = [
