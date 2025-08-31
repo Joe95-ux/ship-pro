@@ -58,11 +58,18 @@ export default function Navigation() {
             {isSignedIn ? (
               <div className="flex items-center space-x-3">
                 {user?.publicMetadata?.role === 'admin' && (
-                  <Link href="/admin">
-                    <Button variant="outline" size="sm">
-                      Admin Dashboard
-                    </Button>
-                  </Link>
+                  <div className="flex items-center space-x-2">
+                    <Link href="/admin">
+                      <Button variant="outline" size="sm">
+                        Admin
+                      </Button>
+                    </Link>
+                    <Link href="/admin/dashboard">
+                      <Button variant="outline" size="sm">
+                        Dashboard
+                      </Button>
+                    </Link>
+                  </div>
                 )}
                 <UserButton
                   appearance={{
@@ -124,11 +131,18 @@ export default function Navigation() {
             {isSignedIn ? (
               <div className="space-y-2">
                 {user?.publicMetadata?.role === 'admin' && (
-                  <Link href="/admin" onClick={() => setIsOpen(false)}>
-                    <Button variant="outline" className="w-full justify-start">
-                      Admin Dashboard
-                    </Button>
-                  </Link>
+                  <div className="space-y-2">
+                    <Link href="/admin" onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full justify-start">
+                        Admin
+                      </Button>
+                    </Link>
+                    <Link href="/admin/dashboard" onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full justify-start">
+                        Dashboard
+                      </Button>
+                    </Link>
+                  </div>
                 )}
                 <div className="px-3 py-2 flex items-center space-x-2">
                   <UserButton

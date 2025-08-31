@@ -132,6 +132,15 @@ export interface ShipmentCreateData {
   estimatedDelivery?: Date | string;
 }
 
+export type  currentLocation = {
+  name: string;
+  address: Address;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+};
+
 export interface ShipmentWithDetails extends Shipment {
   service: Service;
   trackingEvents: TrackingEvent[];
@@ -379,7 +388,7 @@ export interface UploadedFile {
 // Export commonly used type combinations
 export type ShipmentListItem = Pick<
   ShipmentWithDetails,
-  'id' | 'trackingNumber' | 'status' | 'senderName' | 'receiverName' | 'estimatedDelivery' | 'createdAt'
+  'id' | 'trackingNumber' | 'status' | 'senderName' | 'receiverName' | 'estimatedDelivery' | 'createdAt' | 'estimatedCost'
 > & {
   service: Pick<Service, 'name'>;
   shipmentType?: string;
