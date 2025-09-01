@@ -5,10 +5,8 @@ import { useUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { WaybillGenerator } from "@/components/WaybillGenerator";
 
 interface WaybillShipment {
   id: string;
@@ -41,12 +39,22 @@ interface WaybillShipment {
   estimatedCost: number;
   estimatedDelivery: Date;
   createdAt: Date;
+  shipmentType?: string;
+  shipmentMode?: string;
+  paymentMode?: string;
+  specialInstructions?: string;
 }
 
-export default function WaybillPage({ params }: { params: { id: string } }) {
+interface WaybillPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function WaybillPage({ params }: WaybillPageProps) {
   const { user, isLoaded } = useUser();
   const [shipment, setShipment] = useState<WaybillShipment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [shipmentId, setShipmentId] = useState<string>("");
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Check if user is admin
   useEffect(() => {
@@ -55,13 +63,24 @@ export default function WaybillPage({ params }: { params: { id: string } }) {
     }
   }, [user, isLoaded]);
 
+  // Await params
+  useEffect(() => {
+    const getParams = async () => {
+      const resolvedParams = await params;
+      setShipmentId(resolvedParams.id);
+    };
+    getParams();
+  }, [params]);
+
   useEffect(() => {
     const loadShipment = async () => {
+      if (!shipmentId) return;
+      
       try {
         // In a real app, you'd fetch from your API
         // For now, we'll use mock data
         setShipment({
-          id: params.id,
+          id: shipmentId,
           trackingNumber: "SP123456789",
           status: "IN_TRANSIT",
           senderName: "John Doe",
@@ -90,7 +109,11 @@ export default function WaybillPage({ params }: { params: { id: string } }) {
           description: "Electronics package",
           estimatedCost: 125.50,
           estimatedDelivery: new Date("2024-01-20"),
-          createdAt: new Date("2024-01-15")
+          createdAt: new Date("2024-01-15"),
+          shipmentType: "GENERAL",
+          shipmentMode: "LAND_SHIPPING",
+          paymentMode: "CARD",
+          specialInstructions: "Handle with care"
         });
       } catch (error) {
         console.error('Failed to load shipment:', error);
@@ -99,18 +122,401 @@ export default function WaybillPage({ params }: { params: { id: string } }) {
       }
     };
 
-    if (user?.publicMetadata.role === 'admin') {
+    if (user?.publicMetadata.role === 'admin' && shipmentId) {
       loadShipment();
     }
-  }, [params.id, user]);
+  }, [shipmentId, user]);
 
-  const handlePrint = () => {
-    window.print();
+  const formatAddress = (address: any) => {
+    return `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
   };
 
-  const handleDownload = () => {
-    // In a real app, you'd generate a PDF
-    console.log('Downloading waybill...');
+  const generateWaybillData = (shipment: WaybillShipment) => {
+    return {
+      trackingNumber: shipment.trackingNumber,
+      pickupDate: new Date(shipment.createdAt).toISOString().split('T')[0],
+      pickupTime: "09:00 am",
+      deliveryDate: new Date(shipment.estimatedDelivery).toISOString().split('T')[0],
+      origin: shipment.senderAddress.country,
+      destination: shipment.receiverAddress.country,
+      courier: "LOGISTICA FALCON",
+      carrier: "Logistica Falcon",
+      carrierReference: shipment.trackingNumber,
+      departureTime: "14:00 pm",
+      shipper: {
+        name: shipment.senderName,
+        address: formatAddress(shipment.senderAddress),
+        phone: shipment.senderPhone,
+        email: shipment.senderEmail
+      },
+      consignee: {
+        name: shipment.receiverName,
+        address: formatAddress(shipment.receiverAddress),
+        phone: shipment.receiverPhone,
+        email: shipment.receiverEmail
+      },
+      status: shipment.status,
+      comment: shipment.specialInstructions || "Package ready for pickup",
+      shipmentType: shipment.shipmentType?.replace('_', ' ') || 'GENERAL',
+      packages: shipment.description,
+      product: shipment.description,
+      totalFreight: "01",
+      quantity: "01",
+      weight: `${shipment.weight} kg`,
+      paymentMode: shipment.paymentMode?.replace('_', ' ') || 'CARD',
+      mode: shipment.shipmentMode?.replace('_', ' ') || 'LAND_SHIPPING'
+    };
+  };
+
+  const handleDownload = async () => {
+    if (!shipment) return;
+    
+    try {
+      setIsDownloading(true);
+      
+      // Create a new window for printing/downloading
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        const waybillData = generateWaybillData(shipment);
+        
+        // Generate HTML content for the waybill
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Waybill - ${shipment.trackingNumber}</title>
+              <style>
+                body { 
+                  font-family: Arial, sans-serif; 
+                  margin: 20px; 
+                  line-height: 1.6;
+                  color: #333;
+                }
+                .waybill-copy {
+                  border: 1px solid #ccc;
+                  background: white;
+                  padding: 20px;
+                  margin-bottom: 20px;
+                  page-break-inside: avoid;
+                }
+                .header {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: flex-start;
+                  margin-bottom: 20px;
+                  border-bottom: 1px solid #ccc;
+                  padding-bottom: 20px;
+                }
+                .logo-section {
+                  display: flex;
+                  align-items: center;
+                  gap: 15px;
+                }
+                .logo {
+                  width: 60px;
+                  height: 60px;
+                  background: #2563eb;
+                  border-radius: 50%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: white;
+                  font-weight: bold;
+                  font-size: 24px;
+                }
+                .company-info h1 {
+                  color: #2563eb;
+                  font-weight: bold;
+                  font-size: 24px;
+                  margin: 0 0 5px 0;
+                }
+                .company-info .subtitle {
+                  color: #3b82f6;
+                  font-size: 14px;
+                  margin: 0 0 10px 0;
+                }
+                .company-info p {
+                  font-size: 12px;
+                  color: #666;
+                  margin: 2px 0;
+                }
+                .barcode-section {
+                  text-align: right;
+                }
+                .barcode {
+                  border: 1px solid #000;
+                  padding: 10px;
+                  margin-bottom: 10px;
+                  display: inline-block;
+                }
+                .barcode-pattern {
+                  height: 40px;
+                  background: repeating-linear-gradient(
+                    to right,
+                    #000 0px,
+                    #000 2px,
+                    transparent 2px,
+                    transparent 4px
+                  );
+                  margin-bottom: 5px;
+                }
+                .barcode-text {
+                  font-family: monospace;
+                  font-size: 12px;
+                  text-align: center;
+                }
+                .copy-type {
+                  font-size: 14px;
+                  font-weight: bold;
+                  color: #666;
+                }
+                .section {
+                  margin-bottom: 20px;
+                }
+                .section-title {
+                  font-weight: bold;
+                  font-size: 16px;
+                  margin-bottom: 10px;
+                  color: #333;
+                }
+                .grid-3 {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 15px;
+                  border: 1px solid #ccc;
+                }
+                .grid-item {
+                  padding: 10px;
+                }
+                .grid-item .label {
+                  font-size: 12px;
+                  font-weight: bold;
+                  color: #666;
+                  margin-bottom: 5px;
+                }
+                .grid-item .value {
+                  font-size: 14px;
+                }
+                .parties-grid {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 15px;
+                  margin-bottom: 20px;
+                }
+                .party-box {
+                  border: 1px solid #ccc;
+                  padding: 15px;
+                }
+                .party-title {
+                  font-size: 12px;
+                  font-weight: bold;
+                  color: #666;
+                  margin-bottom: 10px;
+                }
+                .party-name {
+                  font-weight: bold;
+                  font-size: 14px;
+                  margin-bottom: 5px;
+                }
+                .party-detail {
+                  font-size: 12px;
+                  color: #666;
+                  margin-bottom: 2px;
+                }
+                @media print {
+                  body { margin: 0; }
+                  .waybill-copy { page-break-after: always; }
+                  .waybill-copy:last-child { page-break-after: avoid; }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="waybill-copy">
+                <div class="header">
+                  <div class="logo-section">
+                    <div class="logo">LF</div>
+                    <div class="company-info">
+                      <h1>LOGISTICA FALCON</h1>
+                      <div class="subtitle">LOGISTICA</div>
+                      <p>Fast and reliable global freight | Logistica Falcon</p>
+                      <p>Fast, Secure & Reliable shipping</p>
+                      <p>https://logisticafalcon.com</p>
+                    </div>
+                  </div>
+                  <div class="barcode-section">
+                    <div class="barcode">
+                      <div class="barcode-pattern"></div>
+                      <div class="barcode-text">${waybillData.trackingNumber}</div>
+                    </div>
+                    <div class="copy-type">Accounts Copy</div>
+                  </div>
+                </div>
+                
+                <div class="section">
+                  <div class="grid-3">
+                    <div class="grid-item">
+                      <div class="label">Pickup Date/Time</div>
+                      <div class="value">${waybillData.pickupDate} ${waybillData.pickupTime}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Delivery Date</div>
+                      <div class="value">${waybillData.deliveryDate}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Origin</div>
+                      <div class="value">${waybillData.origin}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Destination</div>
+                      <div class="value">${waybillData.destination}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Courier</div>
+                      <div class="value">${waybillData.courier}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Carrier</div>
+                      <div class="value">${waybillData.carrier}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Carrier Reference No.</div>
+                      <div class="value">${waybillData.carrierReference}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Departure Time</div>
+                      <div class="value">${waybillData.departureTime}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="parties-grid">
+                  <div class="party-box">
+                    <div class="party-title">Shipper</div>
+                    <div class="party-name">${waybillData.shipper.name}</div>
+                    <div class="party-detail">${waybillData.shipper.address}</div>
+                    <div class="party-detail">${waybillData.shipper.phone}</div>
+                    <div class="party-detail">${waybillData.shipper.email}</div>
+                  </div>
+                  <div class="party-box">
+                    <div class="party-title">Consignee</div>
+                    <div class="party-name">${waybillData.consignee.name}</div>
+                    <div class="party-detail">${waybillData.consignee.address}</div>
+                    <div class="party-detail">${waybillData.consignee.phone}</div>
+                    <div class="party-detail">${waybillData.consignee.email}</div>
+                  </div>
+                  <div class="party-box">
+                    <div class="party-title">Status</div>
+                    <div class="party-name">${waybillData.status}</div>
+                    <div class="party-title" style="margin-top: 10px;">Comment</div>
+                    <div class="party-detail">${waybillData.comment}</div>
+                  </div>
+                </div>
+                
+                <div class="section">
+                  <div class="grid-3">
+                    <div class="grid-item">
+                      <div class="label">Type of Shipment</div>
+                      <div class="value">${waybillData.shipmentType}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Packages</div>
+                      <div class="value">${waybillData.packages}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Product</div>
+                      <div class="value">${waybillData.product}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Total Freight</div>
+                      <div class="value">${waybillData.totalFreight}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Quantity</div>
+                      <div class="value">${waybillData.quantity}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Weight</div>
+                      <div class="value">${waybillData.weight}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Payment Mode</div>
+                      <div class="value">${waybillData.paymentMode}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Mode</div>
+                      <div class="value">${waybillData.mode}</div>
+                    </div>
+                    <div class="grid-item">
+                      <div class="label">Tracking</div>
+                      <div class="value">${waybillData.trackingNumber}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="waybill-copy">
+                <div class="header">
+                  <div class="logo-section">
+                    <div class="logo">LF</div>
+                    <div class="company-info">
+                      <h1>LOGISTICA FALCON</h1>
+                      <div class="subtitle">LOGISTICA</div>
+                      <p>Fast and reliable global freight | Logistica Falcon</p>
+                      <p>Fast, Secure & Reliable shipping</p>
+                      <p>https://logisticafalcon.com</p>
+                    </div>
+                  </div>
+                  <div class="barcode-section">
+                    <div class="barcode">
+                      <div class="barcode-pattern"></div>
+                      <div class="barcode-text">${waybillData.trackingNumber}</div>
+                    </div>
+                    <div class="copy-type">Consignee Copy</div>
+                  </div>
+                </div>
+                <!-- Same content as above -->
+              </div>
+              
+              <div class="waybill-copy">
+                <div class="header">
+                  <div class="logo-section">
+                    <div class="logo">LF</div>
+                    <div class="company-info">
+                      <h1>LOGISTICA FALCON</h1>
+                      <div class="subtitle">LOGISTICA</div>
+                      <p>Fast and reliable global freight | Logistica Falcon</p>
+                      <p>Fast, Secure & Reliable shipping</p>
+                      <p>https://logisticafalcon.com</p>
+                    </div>
+                  </div>
+                  <div class="barcode-section">
+                    <div class="barcode">
+                      <div class="barcode-pattern"></div>
+                      <div class="barcode-text">${waybillData.trackingNumber}</div>
+                    </div>
+                    <div class="copy-type">Shippers Copy</div>
+                  </div>
+                </div>
+                <!-- Same content as above -->
+              </div>
+            </body>
+          </html>
+        `;
+        
+        printWindow.document.write(html);
+        printWindow.document.close();
+        
+        // Wait for content to load, then trigger print
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Failed to download waybill:', error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (!isLoaded || !user || user.publicMetadata.role !== 'admin') {
@@ -137,10 +543,10 @@ export default function WaybillPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center space-x-4">
               <Link href="/admin/dashboard">
                 <Button variant="outline" size="sm">
@@ -153,131 +559,11 @@ export default function WaybillPage({ params }: { params: { id: string } }) {
                 <p className="text-gray-600">Tracking: {shipment?.trackingNumber}</p>
               </div>
             </div>
-            <div className="flex space-x-2">
-              <Button onClick={handlePrint} variant="outline">
-                <Printer className="h-4 w-4 mr-2" />
-                Print
-              </Button>
-              <Button onClick={handleDownload}>
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-            </div>
           </div>
         </div>
 
         {/* Waybill Content */}
-        <Card className="print:shadow-none">
-          <CardHeader className="border-b">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl">ShipPro Waybill</CardTitle>
-                <p className="text-sm text-gray-600">International Shipping Document</p>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">ShipPro</div>
-                <div className="text-sm text-gray-600">Est-Trans</div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Sender Information */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-blue-600">Sender Information</h3>
-                <div className="space-y-2">
-                  <p className="font-medium">{shipment?.senderName}</p>
-                  <p className="text-sm text-gray-600">{shipment?.senderEmail}</p>
-                  <p className="text-sm text-gray-600">{shipment?.senderPhone}</p>
-                  <div className="text-sm text-gray-600">
-                    <p>{shipment?.senderAddress?.street}</p>
-                    <p>{shipment?.senderAddress?.city}, {shipment?.senderAddress?.state} {shipment?.senderAddress?.postalCode}</p>
-                    <p>{shipment?.senderAddress?.country}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Receiver Information */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-green-600">Receiver Information</h3>
-                <div className="space-y-2">
-                  <p className="font-medium">{shipment?.receiverName}</p>
-                  <p className="text-sm text-gray-600">{shipment?.receiverEmail}</p>
-                  <p className="text-sm text-gray-600">{shipment?.receiverPhone}</p>
-                  <div className="text-sm text-gray-600">
-                    <p>{shipment?.receiverAddress?.street}</p>
-                    <p>{shipment?.receiverAddress?.city}, {shipment?.receiverAddress?.state} {shipment?.receiverAddress?.postalCode}</p>
-                    <p>{shipment?.receiverAddress?.country}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Package Information */}
-            <div className="mt-8 border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4">Package Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <p className="text-sm text-gray-600">Service</p>
-                  <p className="font-medium">{shipment?.service?.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Weight</p>
-                  <p className="font-medium">{shipment?.weight} kg</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Dimensions</p>
-                  <p className="font-medium">{shipment?.dimensions?.length} × {shipment?.dimensions?.width} × {shipment?.dimensions?.height} {shipment?.dimensions?.unit}</p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <p className="text-sm text-gray-600">Description</p>
-                <p className="font-medium">{shipment?.description}</p>
-              </div>
-            </div>
-
-            {/* Shipping Details */}
-            <div className="mt-8 border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4">Shipping Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-gray-600">Tracking Number</p>
-                  <p className="font-mono font-medium text-lg">{shipment?.trackingNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <Badge className="mt-1">{shipment?.status?.replace('_', ' ')}</Badge>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Estimated Delivery</p>
-                  <p className="font-medium">{shipment?.estimatedDelivery?.toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Shipping Cost</p>
-                  <p className="font-medium">${shipment?.estimatedCost?.toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Barcode Area */}
-            <div className="mt-8 border-t pt-6">
-              <div className="text-center">
-                <div className="inline-block p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-2">Barcode</p>
-                  <div className="w-48 h-16 bg-gray-100 flex items-center justify-center">
-                    <p className="text-xs text-gray-500">Barcode: {shipment?.trackingNumber}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-8 border-t pt-6 text-center text-sm text-gray-600">
-              <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
-              <p>This document is valid for shipping purposes</p>
-            </div>
-          </CardContent>
-        </Card>
+        {shipment && <WaybillGenerator data={generateWaybillData(shipment)} />}
       </div>
     </div>
   );

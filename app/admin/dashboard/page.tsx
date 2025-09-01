@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { WorldMapWidget } from "@/components/dashboard/WorldMapWidget";
 
 interface AnalyticsData {
   totalShipments: number;
@@ -366,80 +367,90 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Shipments Activities Table */}
-        <Card className="border-0 shadow-sm bg-white">
-          <CardHeader className="border-b border-gray-100">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div>
-                <CardTitle className="text-lg font-semibold text-gray-900">Shipments Activities</CardTitle>
-                <p className="text-sm text-gray-600">Keep track of recent shipping activity</p>
-              </div>
-              
-              {/* Status Tabs - Desktop */}
-              <div className="hidden lg:block">
-                <Tabs 
-                  value={filters.status} 
-                  onValueChange={(value) => setFilters({ ...filters, status: value })}
-                  className="w-full"
-                >
-                  <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="all">All Shipments</TabsTrigger>
-                    <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
-                    <TabsTrigger value="IN_TRANSIT">In transit</TabsTrigger>
-                    <TabsTrigger value="PENDING">Pending</TabsTrigger>
-                    <TabsTrigger value="PICKED_UP">Processing</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
+        {/* Bottom Section: Shipments Activities Table + World Map */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+          {/* Column 1: Shipments Activities Table (8/12 width) */}
+          <div className="xl:col-span-8">
+            <Card className="border-0 shadow-sm bg-white h-full">
+              <CardHeader className="border-b border-gray-100">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-gray-900">Shipments Activities</CardTitle>
+                    <p className="text-sm text-gray-600">Keep track of recent shipping activity</p>
+                  </div>
+                  
+                  {/* Status Tabs - Desktop */}
+                  <div className="hidden lg:block">
+                    <Tabs 
+                      value={filters.status} 
+                      onValueChange={(value) => setFilters({ ...filters, status: value })}
+                      className="w-full"
+                    >
+                      <TabsList className="grid w-full grid-cols-5">
+                        <TabsTrigger value="all">All Shipments</TabsTrigger>
+                        <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
+                        <TabsTrigger value="IN_TRANSIT">In transit</TabsTrigger>
+                        <TabsTrigger value="PENDING">Pending</TabsTrigger>
+                        <TabsTrigger value="PICKED_UP">Processing</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
 
-              {/* Status Tabs - Tablet */}
-              <div className="hidden md:block lg:hidden">
-                <Tabs 
-                  value={filters.status} 
-                  onValueChange={(value) => setFilters({ ...filters, status: value })}
-                  className="w-full"
-                >
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="all">All Shipments</TabsTrigger>
-                    <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
-                    <TabsTrigger value="IN_TRANSIT">In transit</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
+                  {/* Status Tabs - Tablet */}
+                  <div className="hidden md:block lg:hidden">
+                    <Tabs 
+                      value={filters.status} 
+                      onValueChange={(value) => setFilters({ ...filters, status: value })}
+                      className="w-full"
+                    >
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="all">All Shipments</TabsTrigger>
+                        <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
+                        <TabsTrigger value="IN_TRANSIT">In transit</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
 
-              {/* Status Dropdown - Mobile */}
-              <div className="md:hidden">
-                <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Shipments</SelectItem>
-                    <SelectItem value="DELIVERED">Delivered</SelectItem>
-                    <SelectItem value="IN_TRANSIT">In transit</SelectItem>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="PICKED_UP">Processing</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <ShipmentsTable 
-              shipments={shipments}
-              selectedShipments={selectedShipments}
-              onSelectAll={handleSelectAll}
-              onSelectShipment={handleSelectShipment}
-              onBulkDelete={handleBulkDelete}
-              filters={filters}
-              setFilters={setFilters}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              isLoading={isLoading}
-            />
-          </CardContent>
-        </Card>
+                  {/* Status Dropdown - Mobile */}
+                  <div className="md:hidden">
+                    <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Shipments</SelectItem>
+                        <SelectItem value="DELIVERED">Delivered</SelectItem>
+                        <SelectItem value="IN_TRANSIT">In transit</SelectItem>
+                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="PICKED_UP">Processing</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <ShipmentsTable 
+                  shipments={shipments}
+                  selectedShipments={selectedShipments}
+                  onSelectAll={handleSelectAll}
+                  onSelectShipment={handleSelectShipment}
+                  onBulkDelete={handleBulkDelete}
+                  filters={filters}
+                  setFilters={setFilters}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  isLoading={isLoading}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Column 2: World Map (4/12 width) */}
+          <div className="xl:col-span-4">
+            <WorldMapWidget isLoading={isLoading} />
+          </div>
+        </div>
       </div>
     </div>
   );

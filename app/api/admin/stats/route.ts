@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
     const revenueByDate: { [key: string]: number } = {};
 
     recentShipments.forEach(shipment => {
-      const date = shipment.createdAt.toISOString().split('T')[0];
+      const date = new Date(shipment.createdAt).toISOString().split('T')[0];
       shipmentsByDate[date] = (shipmentsByDate[date] || 0) + 1;
       
       const revenue = shipment.finalCost || shipment.estimatedCost;
