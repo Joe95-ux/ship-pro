@@ -5,6 +5,7 @@ import Navigation from "@/components/Navigation";
 import { Toaster } from "@/components/ui/sonner";
 import { Phone, Mail, MapPin, Clock } from "lucide-react";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],

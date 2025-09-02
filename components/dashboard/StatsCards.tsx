@@ -13,8 +13,8 @@ export function StatsCards({ stats, isLoading = false }: StatsCardsProps) {
       title: "Total Shipments",
       value: stats.totalShipments.toLocaleString(),
       icon: Package,
-      color: "text-gray-600",
-      bgColor: "bg-gray-100",
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
       change: "+1.92%",
       changeType: "positive" as const
     },
@@ -22,8 +22,8 @@ export function StatsCards({ stats, isLoading = false }: StatsCardsProps) {
       title: "Pending Package",
       value: stats.pendingShipments.toLocaleString(),
       icon: Clock,
-      color: "text-gray-600",
-      bgColor: "bg-gray-100",
+      color: "text-orange-600",
+      bgColor: "bg-orange-100",
       change: "+1.89%",
       changeType: "positive" as const
     },
@@ -31,8 +31,8 @@ export function StatsCards({ stats, isLoading = false }: StatsCardsProps) {
       title: "Delivery Shipments",
       value: stats.deliveredShipments.toLocaleString(),
       icon: CheckCircle,
-      color: "text-gray-600",
-      bgColor: "bg-gray-100",
+      color: "text-green-600",
+      bgColor: "bg-green-100",
       change: "-0.98%",
       changeType: "negative" as const
     }

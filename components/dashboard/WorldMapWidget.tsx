@@ -1,64 +1,188 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Globe, 
-  MapPin, 
-  TrendingUp,
-  MoreHorizontal
-} from "lucide-react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger
+import { Globe, MapPin, TrendingUp, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import dynamic from "next/dynamic";
+import { scaleThreshold } from "d3-scale";
+import {createMapPinIcon} from "@/components/divIcon";
 
+// Dynamic import for React-Leaflet to avoid SSR issues
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
+  ssr: false,
+});
+
+// Type definitions
 interface CountryData {
   country: string;
-  shipments: number;
-  revenue: number;
-  color: string;
+  countryCode: string;
+  shipmentCount: number;
+  totalRevenue: number;
+  sentFrom: number;
+  receivedIn: number;
+  coordinates: [number, number]; // Coordinates from API
 }
 
 interface WorldMapWidgetProps {
   isLoading?: boolean;
 }
 
-// Sample data - in real app, this would come from API
-const sampleCountryData: CountryData[] = [
-  { country: "United States", shipments: 45, revenue: 12500, color: "#3b82f6" },
-  { country: "Canada", shipments: 23, revenue: 6800, color: "#ef4444" },
-  { country: "United Kingdom", shipments: 18, revenue: 5200, color: "#10b981" },
-  { country: "Germany", shipments: 15, revenue: 4200, color: "#f59e0b" },
-  { country: "France", shipments: 12, revenue: 3500, color: "#8b5cf6" },
-  { country: "Australia", shipments: 9, revenue: 2800, color: "#06b6d4" },
-  { country: "Japan", shipments: 7, revenue: 2100, color: "#84cc16" },
-  { country: "Brazil", shipments: 6, revenue: 1800, color: "#f97316" },
-];
+interface ApiResponse {
+  totalShipments: number;
+  totalRevenue: number;
+  countries: CountryData[];
+}
 
 export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
-  const [countryData, setCountryData] = useState<CountryData[]>(sampleCountryData);
+  const [countryData, setCountryData] = useState<CountryData[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [apiTotals, setApiTotals] = useState({
+    totalShipments: 0,
+    totalRevenue: 0,
+  });
 
-  const totalShipments = countryData.reduce((sum, country) => sum + country.shipments, 0);
-  const totalRevenue = countryData.reduce((sum, country) => sum + country.revenue, 0);
+  // Fetch shipment data from the correct API endpoint
+  useEffect(() => {
+    const fetchShipmentData = async () => {
+      try {
+        setIsLoadingData(true);
 
-  const topCountries = [...countryData]
-    .sort((a, b) => b.shipments - a.shipments)
-    .slice(0, 5);
+        const response = await fetch("/api/shipments/world");
 
-  if (isLoading) {
+        if (response.ok) {
+          const data: ApiResponse = await response.json();
+          console.log("API response data:", data);
+          setCountryData(data.countries);
+          setApiTotals({
+            totalShipments: data.totalShipments,
+            totalRevenue: data.totalRevenue,
+          });
+        } else {
+          console.warn("Failed to fetch world shipment data");
+          // Fallback to sample data if API fails
+          const sampleData = getSampleData();
+          setCountryData(sampleData.countries);
+          setApiTotals({
+            totalShipments: sampleData.totalShipments,
+            totalRevenue: sampleData.totalRevenue,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching world shipment data:", error);
+        // Fallback to sample data on error
+        const sampleData = getSampleData();
+        setCountryData(sampleData.countries);
+        setApiTotals({
+          totalShipments: sampleData.totalShipments,
+          totalRevenue: sampleData.totalRevenue,
+        });
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchShipmentData();
+  }, []);
+
+  // Sample data fallback
+  const getSampleData = (): ApiResponse => ({
+    totalShipments: 6,
+    totalRevenue: 15000,
+    countries: [
+      {
+        country: "United States",
+        countryCode: "USA",
+        shipmentCount: 3,
+        totalRevenue: 8000,
+        sentFrom: 2,
+        receivedIn: 1,
+        coordinates: [39.8283, -98.5795],
+      },
+      {
+        country: "Canada",
+        countryCode: "CAN",
+        shipmentCount: 2,
+        totalRevenue: 4000,
+        sentFrom: 1,
+        receivedIn: 1,
+        coordinates: [56.1304, -106.3468],
+      },
+      {
+        country: "United Kingdom",
+        countryCode: "GBR",
+        shipmentCount: 1,
+        totalRevenue: 3000,
+        sentFrom: 0,
+        receivedIn: 1,
+        coordinates: [55.3781, -3.436],
+      },
+    ],
+  });
+
+  const topCountries = useMemo(
+    () =>
+      [...countryData]
+        .sort((a, b) => b.shipmentCount - a.shipmentCount)
+        .slice(0, 5),
+    [countryData]
+  );
+
+  // Create color scale based on shipment data
+  const colorScale = useMemo(() => {
+    if (!countryData || countryData.length === 0) return null;
+
+    const values = countryData.map((item) => item.shipmentCount);
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+
+    if (maxValue === minValue) {
+      return () => "#ffeda0";
+    }
+
+    // Create a threshold scale with 5 levels
+    return scaleThreshold<number, string>()
+      .domain([
+        minValue + (maxValue - minValue) * 0.2,
+        minValue + (maxValue - minValue) * 0.4,
+        minValue + (maxValue - minValue) * 0.6,
+        minValue + (maxValue - minValue) * 0.8,
+      ])
+      .range(["#ffeda0", "#fed976", "#feb24c", "#fd8d3c", "#e31a1c"]);
+  }, [countryData]);
+
+  if (isLoading || isLoadingData) {
     return (
       <Card className="border-0 shadow-sm bg-white h-full">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg font-semibold text-gray-900">World Map</CardTitle>
-              <p className="text-sm text-gray-600">Shipments by country</p>
+              <CardTitle className="text-lg font-semibold text-gray-900">
+                Shipments by Country
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                Global shipment distribution
+              </p>
             </div>
             <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
           </div>
@@ -68,7 +192,7 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
           <div className="h-48 rounded-lg bg-gray-200 animate-pulse flex items-center justify-center">
             <div className="text-center">
               <div className="w-8 h-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-600 mx-auto mb-2"></div>
-              <p className="text-xs text-gray-500">Loading map...</p>
+              <p className="text-xs text-gray-500">Loading world map...</p>
             </div>
           </div>
 
@@ -106,8 +230,12 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold text-gray-900">World Map</CardTitle>
-            <p className="text-sm text-gray-600">Shipments by country</p>
+            <CardTitle className="text-lg font-semibold text-gray-900">
+              Shipments by Country
+            </CardTitle>
+            <p className="text-sm text-gray-600">
+              Global shipment distribution
+            </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -125,67 +253,64 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
       <CardContent className="space-y-4">
         {/* World Map Visualization */}
         <div className="relative h-48 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg border border-gray-200 overflow-hidden">
-          {/* Simple SVG World Map */}
-          <svg
-            viewBox="0 0 1000 500"
-            className="w-full h-full"
-            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
-          >
-            {/* World Map Paths - Simplified */}
-            <path
-              d="M 100 200 Q 150 180 200 200 Q 250 220 300 200 Q 350 180 400 200 Q 450 220 500 200 Q 550 180 600 200 Q 650 220 700 200 Q 750 180 800 200 Q 850 220 900 200"
-              fill="none"
-              stroke="#94a3b8"
-              strokeWidth="1"
-              opacity="0.6"
-            />
-            <path
-              d="M 150 250 Q 200 230 250 250 Q 300 270 350 250 Q 400 230 450 250 Q 500 270 550 250 Q 600 230 650 250 Q 700 270 750 250 Q 800 230 850 250"
-              fill="none"
-              stroke="#94a3b8"
-              strokeWidth="1"
-              opacity="0.6"
-            />
-            
-            {/* Country Markers */}
-            {countryData.map((country, index) => {
-              const x = 150 + (index * 100);
-              const y = 200 + (Math.sin(index * 0.5) * 50);
-              const size = Math.max(8, Math.min(20, country.shipments / 2));
-              
-              return (
-                <g key={country.country}>
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={size}
-                    fill={country.color}
-                    opacity="0.8"
-                    className="cursor-pointer hover:opacity-100 transition-opacity"
-                    onClick={() => setSelectedCountry(country.country)}
-                  />
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={size + 2}
-                    fill="none"
-                    stroke={selectedCountry === country.country ? "#1f2937" : "transparent"}
-                    strokeWidth="2"
-                  />
-                  <text
-                    x={x}
-                    y={y + size + 12}
-                    textAnchor="middle"
-                    fontSize="8"
-                    fill="#374151"
-                    className="font-medium"
+          {/* React-Leaflet Map */}
+          {typeof window !== "undefined" && (
+            <MapContainer
+              center={[20, 0]}
+              zoom={2}
+              className="w-full h-full"
+              zoomControl={true}
+              attributionControl={false}
+              scrollWheelZoom={true}
+              doubleClickZoom={true}
+              dragging={true}
+              touchZoom={true}
+              minZoom={1}
+              maxZoom={6}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+
+              {/* Country Markers */}
+              {countryData.map((country) => {
+                if (!country.coordinates) return null;
+
+                const color = colorScale
+                  ? colorScale(country.shipmentCount)
+                  : "#D3D3D3";
+
+                return (
+                  <Marker
+                    key={country.countryCode}
+                    position={country.coordinates}
+                    icon={createMapPinIcon(
+                      country.shipmentCount > 3
+                        ? color
+                        : country.shipmentCount > 2
+                        ? "#fd8d3c"
+                        : "#feb24c"
+                    )}
                   >
-                    {country.shipments}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+                    <Popup>
+                      <div className="text-center">
+                        <strong>{country.country}</strong>
+                        <br />
+                        Total Shipments: {country.shipmentCount}
+                        <br />
+                        Sent From: {country.sentFrom}
+                        <br />
+                        Received In: {country.receivedIn}
+                        <br />
+                        Revenue: ${country.totalRevenue.toLocaleString()}
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+          )}
 
           {/* Map Overlay Info */}
           <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm rounded px-2 py-1">
@@ -196,6 +321,22 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
               </span>
             </div>
           </div>
+
+          {/* Color Legend */}
+          <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded px-2 py-1">
+            <div className="flex items-center space-x-2">
+              <div className="flex space-x-1">
+                <div className="w-3 h-3 bg-[#ffeda0] rounded"></div>
+                <div className="w-3 h-3 bg-[#fed976] rounded"></div>
+                <div className="w-3 h-3 bg-[#feb24c] rounded"></div>
+                <div className="w-3 h-3 bg-[#fd8d3c] rounded"></div>
+                <div className="w-3 h-3 bg-[#e31a1c] rounded"></div>
+              </div>
+              <span className="text-xs text-gray-600 font-medium">
+                Shipments
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Stats Summary */}
@@ -203,17 +344,23 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
           <div className="text-center p-3 bg-blue-50 rounded-lg">
             <div className="flex items-center justify-center space-x-1 mb-1">
               <MapPin className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-900">Total Shipments</span>
+              <span className="text-sm font-medium text-blue-900">
+                Total Shipments
+              </span>
             </div>
-            <div className="text-xl font-bold text-blue-900">{totalShipments}</div>
+            <div className="text-xl font-bold text-blue-900">
+              {apiTotals.totalShipments}
+            </div>
           </div>
           <div className="text-center p-3 bg-green-50 rounded-lg">
             <div className="flex items-center justify-center space-x-1 mb-1">
               <TrendingUp className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Revenue</span>
+              <span className="text-sm font-medium text-green-900">
+                Revenue
+              </span>
             </div>
             <div className="text-xl font-bold text-green-900">
-              ${totalRevenue.toLocaleString()}
+              ${apiTotals.totalRevenue.toLocaleString()}
             </div>
           </div>
         </div>
@@ -229,14 +376,20 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
                   ? "bg-gray-100 border border-gray-300"
                   : "hover:bg-gray-50"
               }`}
-              onClick={() => setSelectedCountry(
-                selectedCountry === country.country ? null : country.country
-              )}
+              onClick={() =>
+                setSelectedCountry(
+                  selectedCountry === country.country ? null : country.country
+                )
+              }
             >
               <div className="flex items-center space-x-3">
                 <div
                   className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: country.color }}
+                  style={{
+                    backgroundColor: colorScale
+                      ? colorScale(country.shipmentCount)
+                      : "#D3D3D3",
+                  }}
                 ></div>
                 <span className="text-sm font-medium text-gray-900">
                   {country.country}
@@ -249,10 +402,13 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold text-gray-900">
-                  {country.shipments}
+                  {country.shipmentCount}
                 </div>
                 <div className="text-xs text-gray-500">
-                  ${country.revenue.toLocaleString()}
+                  Sent: {country.sentFrom} | Rec: {country.receivedIn}
+                </div>
+                <div className="text-xs text-gray-500">
+                  ${country.totalRevenue.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -276,23 +432,39 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
               </Button>
             </div>
             {(() => {
-              const country = countryData.find(c => c.country === selectedCountry);
+              const country = countryData.find(
+                (c) => c.country === selectedCountry
+              );
               if (!country) return null;
-              
+
               return (
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Shipments:</span>
-                    <span className="font-medium">{country.shipments}</span>
+                    <span className="text-gray-600">Total Shipments:</span>
+                    <span className="font-medium">{country.shipmentCount}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Sent From:</span>
+                    <span className="font-medium">{country.sentFrom}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Received In:</span>
+                    <span className="font-medium">{country.receivedIn}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Revenue:</span>
-                    <span className="font-medium">${country.revenue.toLocaleString()}</span>
+                    <span className="font-medium">
+                      ${country.totalRevenue.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Market Share:</span>
                     <span className="font-medium">
-                      {((country.shipments / totalShipments) * 100).toFixed(1)}%
+                      {(
+                        (country.shipmentCount / apiTotals.totalShipments) *
+                        100
+                      ).toFixed(1)}
+                      %
                     </span>
                   </div>
                 </div>
@@ -300,6 +472,14 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
             })()}
           </div>
         )}
+
+        {/* Custom CSS for markers */}
+        <style jsx global>{`
+          .custom-marker {
+            background: transparent;
+            border: none;
+          }
+        `}</style>
       </CardContent>
     </Card>
   );
