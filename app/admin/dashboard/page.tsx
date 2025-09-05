@@ -7,20 +7,10 @@ import {
   Plus, 
   Calendar,
   Download,
-  MoreHorizontal,
-  ChevronRight,
-  TrendingUp,
-  TrendingDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { DashboardStats, ShipmentListItem } from "@/lib/types";
 import { getDashboardStats, getShipments, bulkDeleteShipments, getAnalyticsData } from "@/lib/dashboard-actions";
@@ -28,11 +18,16 @@ import { ShipmentsTable } from "@/components/dashboard/ShipmentsTable";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { ShipmentsStatistics } from "@/components/dashboard/ShipmentsStatistics";
 import { TrackingWidget } from "@/components/dashboard/TrackingWidget";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { WorldMapWidget } from "@/components/dashboard/WorldMapWidget";
+import dynamic from "next/dynamic";
+
+const WorldMapWidget = dynamic(()=> import("@/components/dashboard/WorldMapWidget"), {
+  ssr: false,
+})
+
 
 interface AnalyticsData {
   totalShipments: number;

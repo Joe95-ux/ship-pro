@@ -13,7 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { scaleThreshold } from "d3-scale";
-import {createMapPinIcon} from "@/components/divIcon";
+import "leaflet/dist/leaflet.css";
+import { createMapPinIcon } from "@/components/divIcon";
 
 // Dynamic import for React-Leaflet to avoid SSR issues
 const MapContainer = dynamic(
@@ -53,7 +54,7 @@ interface ApiResponse {
   countries: CountryData[];
 }
 
-export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
+export default function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
   const [countryData, setCountryData] = useState<CountryData[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -285,13 +286,7 @@ export function WorldMapWidget({ isLoading }: WorldMapWidgetProps) {
                   <Marker
                     key={country.countryCode}
                     position={country.coordinates}
-                    icon={createMapPinIcon(
-                      country.shipmentCount > 3
-                        ? color
-                        : country.shipmentCount > 2
-                        ? "#fd8d3c"
-                        : "#feb24c"
-                    )}
+                    icon={createMapPinIcon(color)}
                   >
                     <Popup>
                       <div className="text-center">

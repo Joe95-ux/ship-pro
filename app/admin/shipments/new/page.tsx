@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { redirect, useRouter } from "next/navigation";
-import { ArrowLeft, Package, MapPin, User, CreditCard } from "lucide-react";
+import { ArrowLeft, Package, MapPin, User, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
 import type { ShipmentCreateData, Service, ShipmentType, ShipmentMode, PaymentMode } from "@/lib/types";
@@ -20,6 +21,17 @@ export default function NewShipmentPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  
+  const totalSteps = 5;
+  const stepTitles = [
+    "Sender Information",
+    "Receiver Information", 
+    "Current Location",
+    "Package Details",
+    "Review & Submit"
+  ];
   
   const [formData, setFormData] = useState<ShipmentCreateData>({
     // Sender Information
@@ -170,18 +182,72 @@ export default function NewShipmentPage() {
     }));
   };
 
+  // Step validation functions
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 1: // Sender Information
+        return !!(formData.senderName && formData.senderEmail && formData.senderPhone && 
+                 formData.senderAddress.street && formData.senderAddress.city && 
+                 formData.senderAddress.state && formData.senderAddress.postalCode);
+      case 2: // Receiver Information
+        return !!(formData.receiverName && formData.receiverEmail && formData.receiverPhone && 
+                 formData.receiverAddress.street && formData.receiverAddress.city && 
+                 formData.receiverAddress.state && formData.receiverAddress.postalCode);
+      case 3: // Current Location
+        return !!(formData.currentLocation?.name);
+      case 4: // Package Details
+        return !!(formData.serviceId && formData.weight > 0 && formData.dimensions.length > 0 && 
+                 formData.dimensions.width > 0 && formData.dimensions.height > 0 && formData.description);
+      case 5: // Review & Submit
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps([...completedSteps, currentStep]);
+      }
+      if (currentStep < totalSteps) {
+        setCurrentStep(currentStep + 1);
+      }
+    } else {
+      toast({
+        title: "Incomplete Information",
+        description: "Please fill in all required fields before proceeding.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const goToStep = (step: number) => {
+    // Allow going to completed steps or the next step
+    if (completedSteps.includes(step) || step === currentStep + 1) {
+      setCurrentStep(step);
+    }
+  };
+
   // Removed automatic cost calculation - shipper will set cost manually based on current rates
 
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setIsSubmitting(true);
 
     try {
-      // Validate required fields
-      if (!formData.senderName || !formData.receiverName || !formData.serviceId) {
-        throw new Error("Please fill in all required fields");
+      // Validate all steps before submitting
+      for (let i = 1; i <= 4; i++) {
+        if (!validateStep(i)) {
+          throw new Error("Please complete all required information before submitting");
+        }
       }
 
       // Prepare shipment data
@@ -253,13 +319,55 @@ export default function NewShipmentPage() {
           <p className="text-gray-600">Enter shipment details to create a new shipping order</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Sender Information */}
+        {/* Progress Indicator */}
+        <Card className="mb-8 border-0 logistics-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Progress</h3>
+              <span className="text-sm text-gray-600">Step {currentStep} of {totalSteps}</span>
+            </div>
+            <Progress value={(currentStep / totalSteps) * 100} className="mb-4" />
+            <div className="flex justify-between">
+              {stepTitles.map((title, index) => (
+                <button
+                  key={index + 1}
+                  onClick={() => goToStep(index + 1)}
+                  className={`flex flex-col items-center space-y-2 p-2 rounded-lg transition-colors ${
+                    currentStep === index + 1
+                      ? 'bg-red-50 text-red-600'
+                      : completedSteps.includes(index + 1)
+                      ? 'bg-green-50 text-green-600'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                  disabled={!completedSteps.includes(index + 1) && index + 1 !== currentStep + 1}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentStep === index + 1
+                      ? 'bg-red-600 text-white'
+                      : completedSteps.includes(index + 1)
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-400'
+                  }`}>
+                    {completedSteps.includes(index + 1) ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <span className="text-sm font-medium">{index + 1}</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-center max-w-20">{title}</span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step Content */}
+        {currentStep === 1 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="h-5 w-5 text-red-600" />
-                <span>Sender Information</span>
+                <span>Step 1: Sender Information</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -360,13 +468,14 @@ export default function NewShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Receiver Information */}
+        {currentStep === 2 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5 text-red-600" />
-                <span>Receiver Information</span>
+                <span>Step 2: Receiver Information</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -460,13 +569,14 @@ export default function NewShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Current Location */}
+        {currentStep === 3 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5 text-red-600" />
-                <span>Current Location</span>
+                <span>Step 3: Current Location</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -566,13 +676,14 @@ export default function NewShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Package Information */}
+        {currentStep === 4 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Package className="h-5 w-5 text-red-600" />
-                <span>Package Information</span>
+                <span>Step 4: Package Details</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -750,28 +861,104 @@ export default function NewShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
+        {currentStep === 5 && (
+          <Card className="border-0 logistics-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Check className="h-5 w-5 text-red-600" />
+                <span>Step 5: Review & Submit</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Sender Information</h4>
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                    <p><strong>Name:</strong> {formData.senderName}</p>
+                    <p><strong>Email:</strong> {formData.senderEmail}</p>
+                    <p><strong>Phone:</strong> {formData.senderPhone}</p>
+                    <p><strong>Address:</strong> {formData.senderAddress.street}, {formData.senderAddress.city}, {formData.senderAddress.state} {formData.senderAddress.postalCode}, {formData.senderAddress.country}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Receiver Information</h4>
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                    <p><strong>Name:</strong> {formData.receiverName}</p>
+                    <p><strong>Email:</strong> {formData.receiverEmail}</p>
+                    <p><strong>Phone:</strong> {formData.receiverPhone}</p>
+                    <p><strong>Address:</strong> {formData.receiverAddress.street}, {formData.receiverAddress.city}, {formData.receiverAddress.state} {formData.receiverAddress.postalCode}, {formData.receiverAddress.country}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3">Package Details</h4>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <p><strong>Service:</strong> {services.find(s => s.id === formData.serviceId)?.name || 'Not selected'}</p>
+                  <p><strong>Type:</strong> {formData.shipmentType?.replace('_', ' ') || 'Not selected'}</p>
+                  <p><strong>Mode:</strong> {formData.shipmentMode?.replace('_', ' ') || 'Not selected'}</p>
+                  <p><strong>Weight:</strong> {formData.weight} lbs</p>
+                  <p><strong>Dimensions:</strong> {formData.dimensions.length} × {formData.dimensions.width} × {formData.dimensions.height} cm</p>
+                  <p><strong>Value:</strong> ${formData.value}</p>
+                  <p><strong>Estimated Cost:</strong> ${formData.estimatedCost}</p>
+                  <p><strong>Payment Mode:</strong> {formData.paymentMode}</p>
+                  <p><strong>Description:</strong> {formData.description}</p>
+                  {formData.specialInstructions && <p><strong>Special Instructions:</strong> {formData.specialInstructions}</p>}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={prevStep}
+            disabled={currentStep === 1}
+            className="flex items-center"
+          >
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Previous
+          </Button>
+          
+          <div className="flex space-x-4">
             <Link href="/admin">
               <Button variant="outline" type="button">Cancel</Button>
             </Link>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="dhl-gradient text-white"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-                  Creating...
-                </>
-              ) : (
-                'Create Shipment'
-              )}
-            </Button>
+            
+            {currentStep < totalSteps ? (
+              <Button 
+                type="button"
+                onClick={nextStep}
+                className="dhl-gradient text-white flex items-center"
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : (
+              <Button 
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="dhl-gradient text-white"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Shipment'
+                )}
+              </Button>
+            )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

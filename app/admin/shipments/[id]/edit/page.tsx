@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { redirect, useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Package, MapPin, User, Save } from "lucide-react";
+import { ArrowLeft, Package, MapPin, User, Save, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
 
@@ -82,21 +83,19 @@ export default function EditShipmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<EditShipmentData | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  
+  const totalSteps = 5;
+  const stepTitles = [
+    "Status & Payment",
+    "Sender Information",
+    "Receiver Information", 
+    "Current Location",
+    "Package Details"
+  ];
 
-  // Check if user is admin
-  useEffect(() => {
-    if (isLoaded && (!user || user.publicMetadata.role !== 'admin')) {
-      redirect('/');
-    }
-  }, [user, isLoaded]);
-
-  useEffect(() => {
-    if (user?.publicMetadata.role === 'admin' && shipmentId) {
-      loadShipmentData();
-    }
-  }, [user, shipmentId]);
-
-  const loadShipmentData = async () => {
+  const loadShipmentData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -163,7 +162,20 @@ export default function EditShipmentPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [shipmentId]);
+
+  // Check if user is admin
+  useEffect(() => {
+    if (isLoaded && (!user || user.publicMetadata.role !== 'admin')) {
+      redirect('/');
+    }
+  }, [user, isLoaded]);
+
+  useEffect(() => {
+    if (user?.publicMetadata.role === 'admin' && shipmentId) {
+      loadShipmentData();
+    }
+  }, [user, shipmentId, loadShipmentData]);
 
   const handleInputChange = (field: string, value: string | number) => {
     if (!formData) return;
@@ -232,13 +244,74 @@ export default function EditShipmentPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Step validation functions
+  const validateStep = (step: number): boolean => {
+    if (!formData) return false;
+    
+    switch (step) {
+      case 1: // Status & Payment
+        return !!(formData.status && formData.paymentStatus);
+      case 2: // Sender Information
+        return !!(formData.senderName && formData.senderEmail && formData.senderPhone && 
+                 formData.senderAddress.street && formData.senderAddress.city && 
+                 formData.senderAddress.state && formData.senderAddress.postalCode);
+      case 3: // Receiver Information
+        return !!(formData.receiverName && formData.receiverEmail && formData.receiverPhone && 
+                 formData.receiverAddress.street && formData.receiverAddress.city && 
+                 formData.receiverAddress.state && formData.receiverAddress.postalCode);
+      case 4: // Current Location
+        return !!(formData.currentLocation?.name);
+      case 5: // Package Details
+        return !!(formData.serviceId && formData.weight > 0 && formData.dimensions.length > 0 && 
+                 formData.dimensions.width > 0 && formData.dimensions.height > 0 && formData.description);
+      default:
+        return false;
+    }
+  };
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps([...completedSteps, currentStep]);
+      }
+      if (currentStep < totalSteps) {
+        setCurrentStep(currentStep + 1);
+      }
+    } else {
+      toast({
+        title: "Incomplete Information",
+        description: "Please fill in all required fields before proceeding.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const goToStep = (step: number) => {
+    // Allow going to completed steps or the next step
+    if (completedSteps.includes(step) || step === currentStep + 1) {
+      setCurrentStep(step);
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!formData) return;
     
     setIsSubmitting(true);
 
     try {
+      // Validate all steps before submitting
+      for (let i = 1; i <= totalSteps; i++) {
+        if (!validateStep(i)) {
+          throw new Error("Please complete all required information before submitting");
+        }
+      }
+
       // Make API call to update the shipment
       const response = await fetch(`/api/shipments/${shipmentId}`, {
         method: 'PATCH',
@@ -376,16 +449,61 @@ export default function EditShipmentPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Status Update */}
+        {/* Progress Indicator */}
+        <Card className="mb-8 border-0 logistics-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Progress</h3>
+              <span className="text-sm text-gray-600">Step {currentStep} of {totalSteps}</span>
+            </div>
+            <Progress value={(currentStep / totalSteps) * 100} className="mb-4" />
+            <div className="flex justify-between">
+              {stepTitles.map((title, index) => (
+                <button
+                  key={index + 1}
+                  onClick={() => goToStep(index + 1)}
+                  className={`flex flex-col items-center space-y-2 p-2 rounded-lg transition-colors ${
+                    currentStep === index + 1
+                      ? 'bg-red-50 text-red-600'
+                      : completedSteps.includes(index + 1)
+                      ? 'bg-green-50 text-green-600'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                  disabled={!completedSteps.includes(index + 1) && index + 1 !== currentStep + 1}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentStep === index + 1
+                      ? 'bg-red-600 text-white'
+                      : completedSteps.includes(index + 1)
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-400'
+                  }`}>
+                    {completedSteps.includes(index + 1) ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <span className="text-sm font-medium">{index + 1}</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-center max-w-20">{title}</span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step Content */}
+        {currentStep === 1 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
-              <CardTitle>Shipment Status</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <Save className="h-5 w-5 text-red-600" />
+                <span>Step 1: Status & Payment</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="status">Status *</Label>
                   <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -401,7 +519,7 @@ export default function EditShipmentPage() {
                   </Select>
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="paymentStatus">Payment Status</Label>
+                  <Label htmlFor="paymentStatus">Payment Status *</Label>
                   <Select value={formData.paymentStatus} onValueChange={(value) => handleInputChange('paymentStatus', value)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -417,19 +535,20 @@ export default function EditShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Sender Information */}
+        {currentStep === 2 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="h-5 w-5 text-red-600" />
-                <span>Sender Information</span>
+                <span>Step 2: Sender Information</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
-                  <Label htmlFor="senderName">Full Name</Label>
+                  <Label htmlFor="senderName">Full Name *</Label>
                   <Input
                     id="senderName"
                     value={formData.senderName}
@@ -437,7 +556,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="senderEmail">Email Address</Label>
+                  <Label htmlFor="senderEmail">Email Address *</Label>
                   <Input
                     id="senderEmail"
                     type="email"
@@ -446,7 +565,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="senderPhone">Phone Number</Label>
+                  <Label htmlFor="senderPhone">Phone Number *</Label>
                   <Input
                     id="senderPhone"
                     type="tel"
@@ -460,7 +579,7 @@ export default function EditShipmentPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2 form-group">
-                  <Label htmlFor="senderStreet">Street Address</Label>
+                  <Label htmlFor="senderStreet">Street Address *</Label>
                   <Input
                     id="senderStreet"
                     value={formData.senderAddress.street}
@@ -468,7 +587,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="senderCity">City</Label>
+                  <Label htmlFor="senderCity">City *</Label>
                   <Input
                     id="senderCity"
                     value={formData.senderAddress.city}
@@ -476,7 +595,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="senderState">State</Label>
+                  <Label htmlFor="senderState">State *</Label>
                   <Input
                     id="senderState"
                     value={formData.senderAddress.state}
@@ -484,7 +603,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="senderPostalCode">Postal Code</Label>
+                  <Label htmlFor="senderPostalCode">Postal Code *</Label>
                   <Input
                     id="senderPostalCode"
                     value={formData.senderAddress.postalCode}
@@ -492,7 +611,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="senderCountry">Country</Label>
+                  <Label htmlFor="senderCountry">Country *</Label>
                   <Select 
                     value={formData.senderAddress.country}
                     onValueChange={(value) => handleAddressChange('senderAddress', 'country', value)}
@@ -510,19 +629,20 @@ export default function EditShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Receiver Information */}
+        {currentStep === 3 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5 text-red-600" />
-                <span>Receiver Information</span>
+                <span>Step 3: Receiver Information</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
-                  <Label htmlFor="receiverName">Full Name</Label>
+                  <Label htmlFor="receiverName">Full Name *</Label>
                   <Input
                     id="receiverName"
                     value={formData.receiverName}
@@ -530,7 +650,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="receiverEmail">Email Address</Label>
+                  <Label htmlFor="receiverEmail">Email Address *</Label>
                   <Input
                     id="receiverEmail"
                     type="email"
@@ -539,7 +659,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="receiverPhone">Phone Number</Label>
+                  <Label htmlFor="receiverPhone">Phone Number *</Label>
                   <Input
                     id="receiverPhone"
                     type="tel"
@@ -553,7 +673,7 @@ export default function EditShipmentPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2 form-group">
-                  <Label htmlFor="receiverStreet">Street Address</Label>
+                  <Label htmlFor="receiverStreet">Street Address *</Label>
                   <Input
                     id="receiverStreet"
                     value={formData.receiverAddress.street}
@@ -561,7 +681,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="receiverCity">City</Label>
+                  <Label htmlFor="receiverCity">City *</Label>
                   <Input
                     id="receiverCity"
                     value={formData.receiverAddress.city}
@@ -569,7 +689,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="receiverState">State</Label>
+                  <Label htmlFor="receiverState">State *</Label>
                   <Input
                     id="receiverState"
                     value={formData.receiverAddress.state}
@@ -577,7 +697,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="receiverPostalCode">Postal Code</Label>
+                  <Label htmlFor="receiverPostalCode">Postal Code *</Label>
                   <Input
                     id="receiverPostalCode"
                     value={formData.receiverAddress.postalCode}
@@ -585,7 +705,7 @@ export default function EditShipmentPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="receiverCountry">Country</Label>
+                  <Label htmlFor="receiverCountry">Country *</Label>
                   <Select 
                     value={formData.receiverAddress.country}
                     onValueChange={(value) => handleAddressChange('receiverAddress', 'country', value)}
@@ -603,18 +723,19 @@ export default function EditShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Current Location */}
+        {currentStep === 4 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5 text-red-600" />
-                <span>Current Location</span>
+                <span>Step 4: Current Location</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="form-group">
-                <Label htmlFor="currentLocationName">Location Name</Label>
+                <Label htmlFor="currentLocationName">Location Name *</Label>
                 <Input
                   id="currentLocationName"
                   value={formData.currentLocation?.name || ""}
@@ -708,19 +829,20 @@ export default function EditShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Package Information */}
+        {currentStep === 5 && (
           <Card className="border-0 logistics-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Package className="h-5 w-5 text-red-600" />
-                <span>Package Information</span>
+                <span>Step 5: Package Details</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="form-group">
-                  <Label htmlFor="shipmentType">Shipment Type</Label>
+                  <Label htmlFor="shipmentType">Shipment Type *</Label>
                   <Select 
                     value={formData.shipmentType}
                     onValueChange={(value) => handleInputChange('shipmentType', value)}
@@ -739,7 +861,7 @@ export default function EditShipmentPage() {
                   </Select>
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="shipmentMode">Shipment Mode</Label>
+                  <Label htmlFor="shipmentMode">Shipment Mode *</Label>
                   <Select 
                     value={formData.shipmentMode}
                     onValueChange={(value) => handleInputChange('shipmentMode', value)}
@@ -755,7 +877,7 @@ export default function EditShipmentPage() {
                   </Select>
                 </div>
                 <div className="form-group">
-                  <Label htmlFor="paymentMode">Payment Mode</Label>
+                  <Label htmlFor="paymentMode">Payment Mode *</Label>
                   <Select 
                     value={formData.paymentMode}
                     onValueChange={(value) => handleInputChange('paymentMode', value)}
@@ -783,7 +905,7 @@ export default function EditShipmentPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
-                  <Label htmlFor="weight">Weight (lbs)</Label>
+                  <Label htmlFor="weight">Weight (lbs) *</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -805,7 +927,7 @@ export default function EditShipmentPage() {
               </div>
               
               <div className="form-group">
-                <Label>Dimensions (cm)</Label>
+                <Label>Dimensions (cm) *</Label>
                 <div className="grid grid-cols-3 gap-4 mt-2">
                   <div className="form-group">
                     <Input
@@ -858,7 +980,7 @@ export default function EditShipmentPage() {
               </div>
               
               <div className="form-group">
-                <Label htmlFor="description">Package Description</Label>
+                <Label htmlFor="description">Package Description *</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
@@ -878,31 +1000,57 @@ export default function EditShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
+        {/* Navigation Buttons */}
+        <div className="flex justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={prevStep}
+            disabled={currentStep === 1}
+            className="flex items-center"
+          >
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Previous
+          </Button>
+          
+          <div className="flex space-x-4">
             <Link href={`/admin/shipments/${shipmentId}`}>
               <Button variant="outline" type="button">Cancel</Button>
             </Link>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="dhl-gradient text-white"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Update Shipment
-                </>
-              )}
-            </Button>
+            
+            {currentStep < totalSteps ? (
+              <Button 
+                type="button"
+                onClick={nextStep}
+                className="dhl-gradient text-white flex items-center"
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : (
+              <Button 
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="dhl-gradient text-white"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Update Shipment
+                  </>
+                )}
+              </Button>
+            )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

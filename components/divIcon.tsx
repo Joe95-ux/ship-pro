@@ -1,5 +1,3 @@
-"use client";
-
 import L from "leaflet";
 import { MapPin } from "lucide-react";
 import ReactDOMServer from "react-dom/server";
@@ -14,4 +12,4 @@ export const createMapPinIcon = (color: string) =>
     iconSize: [28, 28],
     iconAnchor: [14, 28], // center bottom
     popupAnchor: [0, -28],
-});
+  });
