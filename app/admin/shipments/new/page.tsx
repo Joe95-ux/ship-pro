@@ -362,8 +362,9 @@ export default function NewShipmentPage() {
         </Card>
 
         {/* Step Content */}
-        {currentStep === 1 && (
-          <Card className="border-0 logistics-shadow">
+        <div className="relative overflow-hidden rounded-xl">
+          {currentStep === 1 && (
+            <Card className="border-0 logistics-shadow animate-in slide-in-from-right-4 duration-300">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="h-5 w-5 text-red-600" />
@@ -470,8 +471,8 @@ export default function NewShipmentPage() {
           </Card>
         )}
 
-        {currentStep === 2 && (
-          <Card className="border-0 logistics-shadow">
+          {currentStep === 2 && (
+            <Card className="border-0 logistics-shadow animate-in slide-in-from-right-4 duration-300">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5 text-red-600" />
@@ -571,8 +572,8 @@ export default function NewShipmentPage() {
           </Card>
         )}
 
-        {currentStep === 3 && (
-          <Card className="border-0 logistics-shadow">
+          {currentStep === 3 && (
+            <Card className="border-0 logistics-shadow animate-in slide-in-from-right-4 duration-300">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5 text-red-600" />
@@ -678,8 +679,8 @@ export default function NewShipmentPage() {
           </Card>
         )}
 
-        {currentStep === 4 && (
-          <Card className="border-0 logistics-shadow">
+          {currentStep === 4 && (
+            <Card className="border-0 logistics-shadow animate-in slide-in-from-right-4 duration-300">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Package className="h-5 w-5 text-red-600" />
@@ -863,8 +864,8 @@ export default function NewShipmentPage() {
           </Card>
         )}
 
-        {currentStep === 5 && (
-          <Card className="border-0 logistics-shadow">
+          {currentStep === 5 && (
+            <Card className="border-0 logistics-shadow animate-in slide-in-from-right-4 duration-300">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Check className="h-5 w-5 text-red-600" />
@@ -895,6 +896,19 @@ export default function NewShipmentPage() {
               </div>
               
               <div>
+                <h4 className="font-semibold text-gray-900 mb-3">Current Location</h4>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <p><strong>Location Name:</strong> {formData.currentLocation?.name || 'Not specified'}</p>
+                  {formData.currentLocation?.address.street && (
+                    <p><strong>Address:</strong> {formData.currentLocation.address.street}, {formData.currentLocation.address.city}, {formData.currentLocation.address.state} {formData.currentLocation.address.postalCode}, {formData.currentLocation.address.country}</p>
+                  )}
+                  {formData.currentLocation?.coordinates?.latitude && formData.currentLocation?.coordinates?.longitude && (
+                    <p><strong>Coordinates:</strong> {formData.currentLocation.coordinates.latitude}, {formData.currentLocation.coordinates.longitude}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Package Details</h4>
                 <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                   <p><strong>Service:</strong> {services.find(s => s.id === formData.serviceId)?.name || 'Not selected'}</p>
@@ -911,41 +925,48 @@ export default function NewShipmentPage() {
               </div>
             </CardContent>
           </Card>
-        )}
+          )}
+        </div>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between">
+        <div className="flex justify-between mt-8">
           <Button
             type="button"
             variant="outline"
             onClick={prevStep}
             disabled={currentStep === 1}
-            className="flex items-center"
+            className="flex items-center cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
           >
-            <ChevronLeft className="h-4 w-4 mr-2" />
+            <ChevronLeft className="h-4 w-4 mr-2 transition-transform duration-200" />
             Previous
           </Button>
           
           <div className="flex space-x-4">
             <Link href="/admin">
-              <Button variant="outline" type="button">Cancel</Button>
+              <Button 
+                variant="outline" 
+                type="button" 
+                className="cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg"
+              >
+                Cancel
+              </Button>
             </Link>
             
             {currentStep < totalSteps ? (
               <Button 
                 type="button"
                 onClick={nextStep}
-                className="dhl-gradient text-white flex items-center"
+                className="dhl-gradient text-white flex items-center cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg active:scale-95"
               >
                 Next
-                <ChevronRight className="h-4 w-4 ml-2" />
+                <ChevronRight className="h-4 w-4 ml-2 transition-transform duration-200" />
               </Button>
             ) : (
               <Button 
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="dhl-gradient text-white"
+                className="dhl-gradient text-white cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
               >
                 {isSubmitting ? (
                   <>

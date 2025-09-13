@@ -516,3 +516,288 @@ export async function getRevenueData(): Promise<RevenueData[]> {
     return [];
   }
 }
+
+// Operational Metrics
+interface RouteData {
+  route: string;
+  shipments: number;
+}
+
+interface ShippingMethodData {
+  method: string;
+  avgDeliveryTime: number;
+}
+
+export async function getRouteData(dateFrom?: string, dateTo?: string): Promise<RouteData[]> {
+  try {
+    const where: Prisma.ShipmentWhereInput = {};
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
+    
+    // Get shipments with receiver information
+    const shipments = await db.shipment.findMany({
+      where,
+      select: {
+        receiverAddress: true
+      }
+    });
+    
+    // Group by city and country
+    const routeMap = new Map<string, number>();
+    
+    shipments.forEach(shipment => {
+      const route = `${shipment.receiverAddress.city}, ${shipment.receiverAddress.country}`;
+      const existing = routeMap.get(route) || 0;
+      routeMap.set(route, existing + 1);
+    });
+    
+    // Convert to array and sort by count
+    const routes = Array.from(routeMap.entries())
+      .map(([route, shipments]) => ({ route, shipments }))
+      .sort((a, b) => b.shipments - a.shipments)
+      .slice(0, 10);
+    
+    return routes;
+  } catch (error) {
+    console.error("Error fetching route data:", error);
+    return [];
+  }
+}
+
+export async function getShippingMethodData(dateFrom?: string, dateTo?: string): Promise<ShippingMethodData[]> {
+  try {
+    const where: Prisma.ShipmentWhereInput = {};
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
+    
+    // Get shipments with service information
+    const shipments = await db.shipment.findMany({
+      where,
+      include: {
+        service: {
+          select: { name: true }
+        }
+      }
+    });
+    
+    // Group by service type and calculate average delivery time
+    const methodMap = new Map<string, { totalTime: number; count: number }>();
+    
+    shipments.forEach(shipment => {
+      const serviceName = shipment.service.name.toLowerCase();
+      let method = 'Land';
+      
+      if (serviceName.includes('air') || serviceName.includes('freight')) {
+        method = 'Air';
+      } else if (serviceName.includes('sea') || serviceName.includes('ocean')) {
+        method = 'Sea';
+      }
+      
+      // Mock delivery time calculation (in real app, this would be based on actual delivery data)
+      const deliveryTime = method === 'Air' ? 2 + Math.random() * 3 : 
+                          method === 'Sea' ? 7 + Math.random() * 14 : 
+                          3 + Math.random() * 5;
+      
+      const existing = methodMap.get(method) || { totalTime: 0, count: 0 };
+      methodMap.set(method, {
+        totalTime: existing.totalTime + deliveryTime,
+        count: existing.count + 1
+      });
+    });
+    
+    return Array.from(methodMap.entries()).map(([method, data]) => ({
+      method,
+      avgDeliveryTime: Math.round((data.totalTime / data.count) * 10) / 10
+    }));
+  } catch (error) {
+    console.error("Error fetching shipping method data:", error);
+    return [];
+  }
+}
+
+// Financial Metrics
+interface MonthlyRevenueData {
+  month: string;
+  revenue: number;
+}
+
+interface CustomerSegmentData {
+  segment: string;
+  revenue: number;
+}
+
+export async function getMonthlyRevenueData(dateFrom?: string, dateTo?: string): Promise<MonthlyRevenueData[]> {
+  try {
+    const where: Prisma.ShipmentWhereInput = {};
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
+    
+    // Get shipments grouped by month
+    const shipments = await db.shipment.findMany({
+      where,
+      select: {
+        createdAt: true,
+        estimatedCost: true
+      }
+    });
+    
+    // Group by month
+    const monthMap = new Map<string, number>();
+    
+    shipments.forEach(shipment => {
+      const month = shipment.createdAt.toLocaleDateString('en-US', { month: 'short' });
+      const existing = monthMap.get(month) || 0;
+      monthMap.set(month, existing + (shipment.estimatedCost || 0));
+    });
+    
+    // Convert to array and sort by month order
+    const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const data = Array.from(monthMap.entries()).map(([month, revenue]) => ({
+      month,
+      revenue: Math.round(revenue)
+    }));
+    
+    return data.sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+  } catch (error) {
+    console.error("Error fetching monthly revenue data:", error);
+    return [];
+  }
+}
+
+export async function getCustomerSegmentData(dateFrom?: string, dateTo?: string): Promise<CustomerSegmentData[]> {
+  try {
+    const where: Prisma.ShipmentWhereInput = {};
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
+    
+    // Get shipments with sender information
+    const shipments = await db.shipment.findMany({
+      where,
+      select: {
+        estimatedCost: true,
+        senderName: true
+      }
+    });
+    
+    // Mock customer segmentation based on sender name patterns
+    const segmentMap = new Map<string, number>();
+    
+    shipments.forEach(shipment => {
+      const senderName = shipment.senderName.toLowerCase();
+      let segment = 'Retail';
+      
+      if (senderName.includes('corp') || senderName.includes('inc') || senderName.includes('ltd')) {
+        segment = 'Corporate';
+      } else if (senderName.includes('wholesale') || senderName.includes('distributor')) {
+        segment = 'Wholesale';
+      }
+      
+      const existing = segmentMap.get(segment) || 0;
+      segmentMap.set(segment, existing + (shipment.estimatedCost || 0));
+    });
+    
+    return Array.from(segmentMap.entries()).map(([segment, revenue]) => ({
+      segment,
+      revenue: Math.round(revenue)
+    }));
+  } catch (error) {
+    console.error("Error fetching customer segment data:", error);
+    return [];
+  }
+}
+
+// Performance Metrics
+interface DriverPerformanceData {
+  driver: string;
+  onTimeDeliveries: number;
+}
+
+interface CargoTypeData {
+  cargoType: string;
+  successRate: number;
+}
+
+export async function getDriverPerformanceData(dateFrom?: string, dateTo?: string): Promise<DriverPerformanceData[]> {
+  try {
+    const where: Prisma.ShipmentWhereInput = {};
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
+    
+    // Mock driver data (in real app, this would come from driver/fleet tables)
+    const mockDrivers = [
+      'Driver A', 'Driver B', 'Driver C', 'Driver D', 'Driver E'
+    ];
+    
+    return mockDrivers.map(driver => ({
+      driver,
+      onTimeDeliveries: Math.round(85 + Math.random() * 15) // 85-100%
+    }));
+  } catch (error) {
+    console.error("Error fetching driver performance data:", error);
+    return [];
+  }
+}
+
+export async function getCargoTypeData(dateFrom?: string, dateTo?: string): Promise<CargoTypeData[]> {
+  try {
+    const where: Prisma.ShipmentWhereInput = {};
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
+    
+    // Get shipments with cargo type information
+    const shipments = await db.shipment.findMany({
+      where,
+      select: {
+        shipmentType: true,
+        status: true
+      }
+    });
+    
+    // Group by cargo type and calculate success rate
+    const typeMap = new Map<string, { delivered: number; total: number }>();
+    
+    shipments.forEach(shipment => {
+      const type = shipment.shipmentType || 'Standard';
+      const existing = typeMap.get(type) || { delivered: 0, total: 0 };
+      
+      if (shipment.status === 'DELIVERED') {
+        existing.delivered++;
+      }
+      existing.total++;
+      
+      typeMap.set(type, existing);
+    });
+    
+    return Array.from(typeMap.entries()).map(([cargoType, data]) => ({
+      cargoType,
+      successRate: Math.round((data.delivered / data.total) * 100)
+    }));
+  } catch (error) {
+    console.error("Error fetching cargo type data:", error);
+    return [];
+  }
+}

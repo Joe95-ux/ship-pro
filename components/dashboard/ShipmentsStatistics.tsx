@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,48 +19,193 @@ interface RevenueData {
   color: string;
 }
 
-interface ShipmentsStatisticsProps {
-  totalDeliveries: number;
+// New interfaces for the metrics
+interface RouteData {
+  route: string;
+  shipments: number;
 }
 
-export function ShipmentsStatistics({ totalDeliveries }: ShipmentsStatisticsProps) {
-  const [activeTab, setActiveTab] = useState('shipments');
+interface ShippingMethodData {
+  method: string;
+  avgDeliveryTime: number;
+}
+
+interface MonthlyRevenueData {
+  month: string;
+  revenue: number;
+}
+
+interface CustomerSegmentData {
+  segment: string;
+  revenue: number;
+}
+
+interface DriverPerformanceData {
+  driver: string;
+  onTimeDeliveries: number;
+}
+
+interface CargoTypeData {
+  cargoType: string;
+  successRate: number;
+}
+
+interface ShipmentsStatisticsProps {
+  totalDeliveries: number;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export function ShipmentsStatistics({ totalDeliveries, dateFrom, dateTo }: ShipmentsStatisticsProps) {
+  const [activeTab, setActiveTab] = useState('operational');
+  const [activeSubTab, setActiveSubTab] = useState('routes');
   const [timeframe, setTimeframe] = useState('daily');
+  
+  // Data states
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [routeData, setRouteData] = useState<RouteData[]>([]);
+  const [shippingMethodData, setShippingMethodData] = useState<ShippingMethodData[]>([]);
+  const [monthlyRevenueData, setMonthlyRevenueData] = useState<MonthlyRevenueData[]>([]);
+  const [customerSegmentData, setCustomerSegmentData] = useState<CustomerSegmentData[]>([]);
+  const [driverPerformanceData, setDriverPerformanceData] = useState<DriverPerformanceData[]>([]);
+  const [cargoTypeData, setCargoTypeData] = useState<CargoTypeData[]>([]);
+  
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-                 if (activeTab === 'shipments') {
-           const data = await getChartData(timeframe as 'daily' | 'weekly' | 'monthly');
-          setChartData(data);
-        } else {
-          const data = await getRevenueData();
-          setRevenueData(data);
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      if (activeTab === 'operational') {
+        if (activeSubTab === 'routes') {
+          const response = await fetch(`/api/admin/analytics/operational?type=routes&dateFrom=${dateFrom || ''}&dateTo=${dateTo || ''}`);
+          const result = await response.json();
+          setRouteData(result.data || []);
+        } else if (activeSubTab === 'methods') {
+          const response = await fetch(`/api/admin/analytics/operational?type=methods&dateFrom=${dateFrom || ''}&dateTo=${dateTo || ''}`);
+          const result = await response.json();
+          setShippingMethodData(result.data || []);
         }
-      } catch (error) {
-        console.error('Failed to load chart data:', error);
-      } finally {
-        setIsLoading(false);
+      } else if (activeTab === 'financial') {
+        if (activeSubTab === 'monthly') {
+          const response = await fetch(`/api/admin/analytics/financial?type=monthly&dateFrom=${dateFrom || ''}&dateTo=${dateTo || ''}`);
+          const result = await response.json();
+          setMonthlyRevenueData(result.data || []);
+        } else if (activeSubTab === 'segments') {
+          const response = await fetch(`/api/admin/analytics/financial?type=segments&dateFrom=${dateFrom || ''}&dateTo=${dateTo || ''}`);
+          const result = await response.json();
+          setCustomerSegmentData(result.data || []);
+        }
+      } else if (activeTab === 'performance') {
+        if (activeSubTab === 'drivers') {
+          const response = await fetch(`/api/admin/analytics/performance?type=drivers&dateFrom=${dateFrom || ''}&dateTo=${dateTo || ''}`);
+          const result = await response.json();
+          setDriverPerformanceData(result.data || []);
+        } else if (activeSubTab === 'cargo') {
+          const response = await fetch(`/api/admin/analytics/performance?type=cargo&dateFrom=${dateFrom || ''}&dateTo=${dateTo || ''}`);
+          const result = await response.json();
+          setCargoTypeData(result.data || []);
+        }
+      } else if (activeTab === 'shipments') {
+        const data = await getChartData(timeframe as 'daily' | 'weekly' | 'monthly');
+        setChartData(data);
+      } else if (activeTab === 'revenue') {
+        const data = await getRevenueData();
+        setRevenueData(data);
       }
-    };
+    } catch (error) {
+      console.error('Failed to load chart data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeTab, activeSubTab, timeframe, dateFrom, dateTo]);
 
+  useEffect(() => {
     loadData();
-  }, [activeTab, timeframe]);
+  }, [activeTab, activeSubTab, timeframe, dateFrom, dateTo, loadData]);
 
   const maxValue = Math.max(...chartData.map(d => Math.max(d.shipments, d.deliveries)), 1);
   const totalRevenue = revenueData.reduce((sum, item) => sum + item.revenue, 0);
+
+  // Helper function to render bar chart
+  const renderBarChart = (data: any[], xKey: string, yKey: string, colors: string[] = ['#3b82f6']) => {
+    const maxValue = Math.max(...data.map(d => Number(d[yKey]) || 0), 1);
+    
+    return (
+      <div className="flex flex-1">
+        {/* Y-axis */}
+        <div className="flex flex-col justify-between text-xs text-gray-500 mr-3 sm:mr-4 h-48 sm:h-64">
+          <span className="font-medium">{maxValue}</span>
+          <span>{Math.round(maxValue * 0.8)}</span>
+          <span>{Math.round(maxValue * 0.6)}</span>
+          <span>{Math.round(maxValue * 0.4)}</span>
+          <span>{Math.round(maxValue * 0.2)}</span>
+          <span className="font-medium">0</span>
+        </div>
+
+        {/* Chart Area */}
+        <div className="flex-1 min-w-0">
+          <div className="relative h-48 sm:h-64">
+            {isLoading ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-8 h-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 mx-auto mb-2"></div>
+                  <p className="text-xs text-gray-500">Loading chart data...</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Grid Lines */}
+                <div className="absolute inset-0">
+                  {[0, 20, 40, 60, 80, 100].map((percent) => (
+                    <div
+                      key={percent}
+                      className="absolute w-full border-t border-gray-100"
+                      style={{ top: `${100 - (percent / 100) * 100}%` }}
+                    ></div>
+                  ))}
+                </div>
+                
+                {/* Bars */}
+                <div className="relative h-full flex items-end justify-between space-x-1">
+                  {data.map((item, index) => (
+                    <div key={index} className="flex-1 flex items-end">
+                      <div 
+                        className="flex-1 rounded-t transition-all duration-300 hover:opacity-80"
+                        style={{ 
+                          height: `${(Number(item[yKey]) / maxValue) * 100}%`,
+                          minHeight: '4px',
+                          backgroundColor: colors[index % colors.length]
+                        }}
+                        title={`${xKey}: ${item[xKey]}, ${yKey}: ${item[yKey]}`}
+                      ></div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          
+          {/* X-axis labels */}
+          <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
+            {data.map((item, index) => (
+              <span key={index} className="font-medium text-center flex-1 truncate px-0.5">
+                {String(item[xKey])}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card className="border-0 shadow-sm bg-white h-full">
       <CardHeader className="pb-4 border-b border-gray-100">
         <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg font-semibold text-gray-900">Shipments Statistics</CardTitle>
-            <p className="text-sm text-gray-600 mt-1">Total number of deliveries {totalDeliveries.toLocaleString()}</p>
+            <CardTitle className="text-lg font-semibold text-gray-900">Analytics Dashboard</CardTitle>
+            <p className="text-sm text-gray-600 mt-1">Comprehensive shipping metrics and insights</p>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 lg:gap-4">
             {/* Timeframe Selector - Only show for shipments tab */}
@@ -80,14 +225,206 @@ export function ShipmentsStatistics({ totalDeliveries }: ShipmentsStatisticsProp
         </div>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 flex-1">
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="shipments">Shipments</TabsTrigger>
-            <TabsTrigger value="revenue">Revenue</TabsTrigger>
+        {/* Main Tabs */}
+        <Tabs value={activeTab} onValueChange={(value) => {
+          setActiveTab(value);
+          // Reset sub-tab when changing main tab
+          if (value === 'operational') setActiveSubTab('routes');
+          else if (value === 'financial') setActiveSubTab('monthly');
+          else if (value === 'performance') setActiveSubTab('drivers');
+        }} className="w-full h-full flex flex-col">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsTrigger value="operational">🚚 Operational</TabsTrigger>
+            <TabsTrigger value="financial">💰 Financial</TabsTrigger>
+            <TabsTrigger value="performance">📊 Performance</TabsTrigger>
+            <TabsTrigger value="shipments">📦 Shipments</TabsTrigger>
+            <TabsTrigger value="revenue">💵 Revenue</TabsTrigger>
           </TabsList>
 
-          {/* Tab Content */}
+          {/* Operational Metrics */}
+          {activeTab === 'operational' && (
+            <div className="space-y-4 flex-1 flex flex-col">
+              {/* Sub-tabs */}
+              <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="routes">Routes & Destinations</TabsTrigger>
+                  <TabsTrigger value="methods">Shipping Methods</TabsTrigger>
+                </TabsList>
+
+                {activeSubTab === 'routes' && (
+                  <div className="space-y-4 flex-1 flex flex-col">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Top Shipping Routes</h3>
+                      <p className="text-sm text-gray-600">Number of shipments by destination</p>
+                    </div>
+                    {renderBarChart(routeData, 'route', 'shipments', ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'])}
+                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-blue-600">
+                          {routeData.reduce((sum, d) => sum + d.shipments, 0).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Total Shipments</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-green-600">
+                          {routeData.length}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Active Routes</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeSubTab === 'methods' && (
+                  <div className="space-y-4 flex-1 flex flex-col">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Shipping Methods Efficiency</h3>
+                      <p className="text-sm text-gray-600">Average delivery time by method</p>
+                    </div>
+                    {renderBarChart(shippingMethodData, 'method', 'avgDeliveryTime', ['#10b981', '#f59e0b', '#8b5cf6'])}
+                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-blue-600">
+                          {shippingMethodData.length}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Methods</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-green-600">
+                          {shippingMethodData.length > 0 ? Math.round(shippingMethodData.reduce((sum, d) => sum + d.avgDeliveryTime, 0) / shippingMethodData.length * 10) / 10 : 0} days
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Avg Delivery Time</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Tabs>
+            </div>
+          )}
+
+          {/* Financial Metrics */}
+          {activeTab === 'financial' && (
+            <div className="space-y-4 flex-1 flex flex-col">
+              {/* Sub-tabs */}
+              <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="monthly">Monthly Revenue</TabsTrigger>
+                  <TabsTrigger value="segments">Customer Segments</TabsTrigger>
+                </TabsList>
+
+                {activeSubTab === 'monthly' && (
+                  <div className="space-y-4 flex-1 flex flex-col">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Monthly Revenue Trend</h3>
+                      <p className="text-sm text-gray-600">Revenue by month</p>
+                    </div>
+                    {renderBarChart(monthlyRevenueData, 'month', 'revenue', ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444'])}
+                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-blue-600">
+                          ${monthlyRevenueData.reduce((sum, d) => sum + d.revenue, 0).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Total Revenue</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-green-600">
+                          {monthlyRevenueData.length}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Months</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeSubTab === 'segments' && (
+                  <div className="space-y-4 flex-1 flex flex-col">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Customer Segment Revenue</h3>
+                      <p className="text-sm text-gray-600">Revenue by customer type</p>
+                    </div>
+                    {renderBarChart(customerSegmentData, 'segment', 'revenue', ['#8b5cf6', '#10b981', '#f59e0b'])}
+                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-blue-600">
+                          ${customerSegmentData.reduce((sum, d) => sum + d.revenue, 0).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Total Revenue</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-green-600">
+                          {customerSegmentData.length}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Segments</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Tabs>
+            </div>
+          )}
+
+          {/* Performance Metrics */}
+          {activeTab === 'performance' && (
+            <div className="space-y-4 flex-1 flex flex-col">
+              {/* Sub-tabs */}
+              <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="drivers">Driver Performance</TabsTrigger>
+                  <TabsTrigger value="cargo">Cargo Types</TabsTrigger>
+                </TabsList>
+
+                {activeSubTab === 'drivers' && (
+                  <div className="space-y-4 flex-1 flex flex-col">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Driver Performance</h3>
+                      <p className="text-sm text-gray-600">On-time delivery percentage</p>
+                    </div>
+                    {renderBarChart(driverPerformanceData, 'driver', 'onTimeDeliveries', ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444'])}
+                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-blue-600">
+                          {driverPerformanceData.length > 0 ? Math.round(driverPerformanceData.reduce((sum, d) => sum + d.onTimeDeliveries, 0) / driverPerformanceData.length) : 0}%
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Avg Performance</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-green-600">
+                          {driverPerformanceData.length}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Active Drivers</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeSubTab === 'cargo' && (
+                  <div className="space-y-4 flex-1 flex flex-col">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Cargo Type Success Rate</h3>
+                      <p className="text-sm text-gray-600">Delivery success rate by cargo type</p>
+                    </div>
+                    {renderBarChart(cargoTypeData, 'cargoType', 'successRate', ['#10b981', '#f59e0b', '#8b5cf6', '#ef4444'])}
+                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-blue-600">
+                          {cargoTypeData.length > 0 ? Math.round(cargoTypeData.reduce((sum, d) => sum + d.successRate, 0) / cargoTypeData.length) : 0}%
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Avg Success Rate</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-green-600">
+                          {cargoTypeData.length}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Cargo Types</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Tabs>
+            </div>
+          )}
+
+          {/* Original Shipments Tab */}
           {activeTab === 'shipments' && (
             <div className="space-y-4 flex-1 flex flex-col">
               {/* Legends */}
@@ -114,65 +451,65 @@ export function ShipmentsStatistics({ totalDeliveries }: ShipmentsStatisticsProp
                   <span className="font-medium">0</span>
                 </div>
 
-                                 {/* Chart Area */}
-                 <div className="flex-1 min-w-0">
-                   <div className="relative h-48 sm:h-64">
-                     {isLoading ? (
-                       <div className="h-full flex items-center justify-center">
-                         <div className="text-center">
-                           <div className="w-8 h-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 mx-auto mb-2"></div>
-                           <p className="text-xs text-gray-500">Loading chart data...</p>
-                         </div>
-                       </div>
-                     ) : (
-                       <>
-                         {/* Grid Lines */}
-                         <div className="absolute inset-0">
-                           {[0, 20, 40, 60, 80, 100].map((percent) => (
-                             <div
-                               key={percent}
-                               className="absolute w-full border-t border-gray-100"
-                               style={{ top: `${100 - (percent / 100) * 100}%` }}
-                             ></div>
-                           ))}
-                         </div>
-                         
-                         {/* Bars */}
-                         <div className="relative h-full flex items-end justify-between space-x-1">
-                           {chartData.map((data, index) => (
-                             <div key={index} className="flex-1 flex items-end space-x-0.5 sm:space-x-1">
-                               <div 
-                                 className="flex-1 bg-blue-600 rounded-t transition-all duration-300 hover:bg-blue-700"
-                                 style={{ 
-                                   height: `${(data.shipments / maxValue) * 100}%`,
-                                   minHeight: '4px'
-                                 }}
-                                 title={`Shipments: ${data.shipments}`}
-                               ></div>
-                               <div 
-                                 className="flex-1 bg-green-500 rounded-t transition-all duration-300 hover:bg-green-600"
-                                 style={{ 
-                                   height: `${(data.deliveries / maxValue) * 100}%`,
-                                   minHeight: '4px'
-                                 }}
-                                 title={`Deliveries: ${data.deliveries}`}
-                               ></div>
-                             </div>
-                           ))}
-                         </div>
-                       </>
-                     )}
-                   </div>
-                   
-                   {/* X-axis labels */}
-                   <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
-                     {chartData.map((data, index) => (
-                       <span key={index} className="font-medium text-center flex-1 truncate px-0.5">
-                         {data.date}
-                       </span>
-                     ))}
-                   </div>
-                 </div>
+                {/* Chart Area */}
+                <div className="flex-1 min-w-0">
+                  <div className="relative h-48 sm:h-64">
+                    {isLoading ? (
+                      <div className="h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="w-8 h-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 mx-auto mb-2"></div>
+                          <p className="text-xs text-gray-500">Loading chart data...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Grid Lines */}
+                        <div className="absolute inset-0">
+                          {[0, 20, 40, 60, 80, 100].map((percent) => (
+                            <div
+                              key={percent}
+                              className="absolute w-full border-t border-gray-100"
+                              style={{ top: `${100 - (percent / 100) * 100}%` }}
+                            ></div>
+                          ))}
+                        </div>
+                        
+                        {/* Bars */}
+                        <div className="relative h-full flex items-end justify-between space-x-1">
+                          {chartData.map((data, index) => (
+                            <div key={index} className="flex-1 flex items-end space-x-0.5 sm:space-x-1">
+                              <div 
+                                className="flex-1 bg-blue-600 rounded-t transition-all duration-300 hover:bg-blue-700"
+                                style={{ 
+                                  height: `${(data.shipments / maxValue) * 100}%`,
+                                  minHeight: '4px'
+                                }}
+                                title={`Shipments: ${data.shipments}`}
+                              ></div>
+                              <div 
+                                className="flex-1 bg-green-500 rounded-t transition-all duration-300 hover:bg-green-600"
+                                style={{ 
+                                  height: `${(data.deliveries / maxValue) * 100}%`,
+                                  minHeight: '4px'
+                                }}
+                                title={`Deliveries: ${data.deliveries}`}
+                              ></div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* X-axis labels */}
+                  <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
+                    {chartData.map((data, index) => (
+                      <span key={index} className="font-medium text-center flex-1 truncate px-0.5">
+                        {data.date}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
               
               {/* Summary Stats */}
@@ -193,6 +530,7 @@ export function ShipmentsStatistics({ totalDeliveries }: ShipmentsStatisticsProp
             </div>
           )}
 
+          {/* Original Revenue Tab (Pie Chart) */}
           {activeTab === 'revenue' && (
             <div className="space-y-6 flex-1 flex flex-col">
               {isLoading ? (

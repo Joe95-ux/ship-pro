@@ -352,7 +352,11 @@ export default function DashboardPage() {
             
             {/* Bottom Half: Shipments Statistics with Tabs */}
             <div className="flex-1">
-              <ShipmentsStatistics totalDeliveries={stats?.deliveredShipments || 0} />
+              <ShipmentsStatistics 
+                totalDeliveries={stats?.deliveredShipments || 0} 
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
+              />
             </div>
           </div>
 

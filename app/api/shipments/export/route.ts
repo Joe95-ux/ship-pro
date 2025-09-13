@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (service && service !== "all") {
-      where.serviceType = service;
+      where.serviceId = service;
     }
 
     // Get all shipments for export
