@@ -23,31 +23,37 @@ interface RevenueData {
 interface RouteData {
   route: string;
   shipments: number;
+  [key: string]: unknown;
 }
 
 interface ShippingMethodData {
   method: string;
   avgDeliveryTime: number;
+  [key: string]: unknown;
 }
 
 interface MonthlyRevenueData {
   month: string;
   revenue: number;
+  [key: string]: unknown;
 }
 
 interface CustomerSegmentData {
   segment: string;
   revenue: number;
+  [key: string]: unknown;
 }
 
 interface DriverPerformanceData {
   driver: string;
   onTimeDeliveries: number;
+  [key: string]: unknown;
 }
 
 interface CargoTypeData {
   cargoType: string;
   successRate: number;
+  [key: string]: unknown;
 }
 
 interface ShipmentsStatisticsProps {
@@ -128,7 +134,7 @@ export function ShipmentsStatistics({ totalDeliveries, dateFrom, dateTo }: Shipm
   const totalRevenue = revenueData.reduce((sum, item) => sum + item.revenue, 0);
 
   // Helper function to render bar chart
-  const renderBarChart = (data: any[], xKey: string, yKey: string, colors: string[] = ['#3b82f6']) => {
+  const renderBarChart = <T extends Record<string, unknown>>(data: T[], xKey: keyof T, yKey: keyof T, colors: string[] = ['#3b82f6']) => {
     const maxValue = Math.max(...data.map(d => Number(d[yKey]) || 0), 1);
     
     return (
@@ -177,7 +183,7 @@ export function ShipmentsStatistics({ totalDeliveries, dateFrom, dateTo }: Shipm
                           minHeight: '4px',
                           backgroundColor: colors[index % colors.length]
                         }}
-                        title={`${xKey}: ${item[xKey]}, ${yKey}: ${item[yKey]}`}
+                        title={`${String(xKey)}: ${item[xKey]}, ${String(yKey)}: ${item[yKey]}`}
                       ></div>
                     </div>
                   ))}

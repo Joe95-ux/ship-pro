@@ -132,10 +132,6 @@ export function ShipmentsTable({
     { value: "PICKED_UP", label: "Processing" }
   ];
 
-  const getCurrentStatusLabel = () => {
-    const currentTab = statusTabs.find(tab => tab.value === filters.status);
-    return currentTab ? currentTab.label : "All Shipments";
-  };
 
   return (
     <div className="space-y-4">
