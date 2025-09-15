@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { 
@@ -23,19 +23,22 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import dynamic from "next/dynamic";
+import { NotificationCenter } from "@/components/ui/notification-center";
+import { ToastContainer } from "@/components/ui/toast-notification";
+import { useNotifications } from "@/hooks/use-notifications";
 
 const WorldMapWidget = dynamic(()=> import("@/components/dashboard/WorldMapWidget"), {
   ssr: false,
 })
 
 
-interface AnalyticsData {
-  totalShipments: number;
-  deliveredShipments: number;
-  inTransitShipments: number;
-  deliveryRate: number;
-  revenue: number;
-}
+// interface AnalyticsData {
+//   totalShipments: number;
+//   deliveredShipments: number;
+//   inTransitShipments: number;
+//   deliveryRate: number;
+//   revenue: number;
+// }
 
 // Function to get appropriate greeting based on time of day
 const getGreeting = () => {
@@ -55,7 +58,7 @@ const getGreeting = () => {
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  // const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [shipments, setShipments] = useState<ShipmentListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedShipments, setSelectedShipments] = useState<string[]>([]);
@@ -75,6 +78,21 @@ export default function DashboardPage() {
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // Notification system
+  const {
+    notifications,
+    toasts,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
+    dismissToast,
+    notifyShipmentUpdate,
+    notifySystemAlert,
+    notifyMaintenance,
+    // notifyPerformanceAlert
+  } = useNotifications();
+
   // Check if user is admin
   useEffect(() => {
     if (isLoaded && (!user || user.publicMetadata.role !== 'admin')) {
@@ -82,7 +100,7 @@ export default function DashboardPage() {
     }
   }, [user, isLoaded]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -91,13 +109,13 @@ export default function DashboardPage() {
       const dateTo = format(dateRange.to, 'yyyy-MM-dd');
       
       // Load stats and analytics data
-      const [statsData, analyticsData] = await Promise.all([
+      const [statsData] = await Promise.all([
         getDashboardStats(),
         getAnalyticsData()
       ]);
       
       setStats(statsData);
-      setAnalyticsData(analyticsData);
+      // setAnalyticsData(analyticsData);
       
       // Create updated filters with date range
       const updatedFilters = {
@@ -121,9 +139,9 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dateRange, filters, currentPage]);
 
-  const debouncedLoadData = () => {
+  const debouncedLoadData = useCallback(() => {
     // Clear existing timeout
     if (debounceTimeout) {
       clearTimeout(debounceTimeout);
@@ -137,7 +155,7 @@ export default function DashboardPage() {
     }, 500); // 500ms debounce
     
     setDebounceTimeout(timeout);
-  };
+  }, [debounceTimeout, user, loadDashboardData]);
 
   // Load data when user changes, page changes, or filters change
   useEffect(() => {
@@ -151,7 +169,62 @@ export default function DashboardPage() {
         clearTimeout(debounceTimeout);
       }
     };
-  }, [user, currentPage, filters.status, filters.search, filters.service, filters.dateFrom, filters.dateTo]);
+  }, [user, currentPage, filters.status, filters.search, filters.service, filters.dateFrom, filters.dateTo, debounceTimeout, debouncedLoadData]);
+
+  // Demo notifications for testing (remove in production)
+  useEffect(() => {
+    if (user?.publicMetadata.role === 'admin' && notifications.length === 0) {
+      // Add some demo notifications
+      setTimeout(() => {
+        notifySystemAlert(
+          "Welcome to the Dashboard",
+          "Your real-time notification system is now active. You'll receive alerts for shipment updates, system events, and performance metrics.",
+          "medium"
+        );
+      }, 2000);
+
+      setTimeout(() => {
+        notifyShipmentUpdate("demo-1", "DELIVERED", "TRK123456789");
+      }, 5000);
+
+      setTimeout(() => {
+        notifyMaintenance("VH-001", "Truck Alpha", "Oil Change");
+      }, 8000);
+    }
+  }, [user, notifications.length, notifySystemAlert, notifyShipmentUpdate, notifyMaintenance]);
+
+  // Performance monitoring - check for alerts when stats change
+  useEffect(() => {
+    if (stats && user?.publicMetadata.role === 'admin') {
+      // Check delivery rate
+      const deliveryRate = stats.totalShipments > 0 ? (stats.deliveredShipments / stats.totalShipments) * 100 : 0;
+      if (deliveryRate < 80 && stats.totalShipments > 10) {
+        notifySystemAlert(
+          "Low Delivery Rate Alert",
+          `Delivery rate is ${deliveryRate.toFixed(1)}%, which is below the 80% threshold. Consider reviewing delayed shipments.`,
+          "high"
+        );
+      }
+
+      // Check pending shipments
+      if (stats.pendingShipments > 50) {
+        notifySystemAlert(
+          "High Pending Shipments",
+          `There are ${stats.pendingShipments} pending shipments. Consider processing them to improve delivery times.`,
+          "medium"
+        );
+      }
+
+      // Check revenue threshold
+      if (stats.revenue > 100000) {
+        notifySystemAlert(
+          "Revenue Milestone",
+          `Congratulations! Monthly revenue has reached $${stats.revenue.toLocaleString()}.`,
+          "medium"
+        );
+      }
+    }
+  }, [stats, user, notifySystemAlert]);
 
   const handleBulkDelete = async () => {
     if (selectedShipments.length === 0) return;
@@ -161,8 +234,20 @@ export default function DashboardPage() {
         await bulkDeleteShipments(selectedShipments);
         setSelectedShipments([]);
         loadDashboardData();
+        
+        // Notify about bulk deletion
+        notifySystemAlert(
+          "Bulk Deletion Completed",
+          `Successfully deleted ${selectedShipments.length} shipments from the system.`,
+          "medium"
+        );
       } catch (error) {
         console.error('Failed to delete shipments:', error);
+        notifySystemAlert(
+          "Deletion Failed",
+          "Failed to delete selected shipments. Please try again.",
+          "high"
+        );
       }
     }
   };
@@ -201,6 +286,11 @@ export default function DashboardPage() {
       // Format dates for export
       if (!dateRange.from || !dateRange.to) {
         console.error('Date range not set');
+        notifySystemAlert(
+          "Export Failed",
+          "Date range is not properly set. Please select a valid date range.",
+          "high"
+        );
         return;
       }
       const dateFrom = format(dateRange.from, 'yyyy-MM-dd');
@@ -232,11 +322,28 @@ export default function DashboardPage() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+        
+        // Notify successful export
+        notifySystemAlert(
+          "Export Completed",
+          `Shipments data exported successfully for ${dateFrom} to ${dateTo}.`,
+          "medium"
+        );
       } else {
         console.error('Failed to export CSV');
+        notifySystemAlert(
+          "Export Failed",
+          "Failed to export shipments data. Please try again.",
+          "high"
+        );
       }
     } catch (error) {
       console.error('Export failed:', error);
+      notifySystemAlert(
+        "Export Error",
+        "An error occurred while exporting data. Please try again.",
+        "high"
+      );
     } finally {
       setIsExporting(false);
     }
@@ -264,6 +371,15 @@ export default function DashboardPage() {
               <p className="text-3xl font-bold text-gray-900">{getGreeting()}</p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              {/* Notification Center */}
+              <NotificationCenter
+                notifications={notifications}
+                onMarkAsRead={markAsRead}
+                onMarkAllAsRead={markAllAsRead}
+                onDelete={deleteNotification}
+                onClearAll={clearAllNotifications}
+              />
+
               {/* Date Range Picker */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -330,6 +446,26 @@ export default function DashboardPage() {
                   <Download className="h-4 w-4 mr-2" />
                 )}
                 {isExporting ? 'Exporting...' : 'Export CSV'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Simulate a random notification
+                  const types = ['shipment_update', 'maintenance_alert', 'system_alert'];
+                  const randomType = types[Math.floor(Math.random() * types.length)];
+                  
+                  if (randomType === 'shipment_update') {
+                    notifyShipmentUpdate('demo-' + Date.now(), 'DELIVERED', 'TRK' + Math.random().toString().substr(2, 9));
+                  } else if (randomType === 'maintenance_alert') {
+                    notifyMaintenance('VH-' + Math.floor(Math.random() * 100), 'Truck ' + String.fromCharCode(65 + Math.floor(Math.random() * 26)), 'Maintenance Check');
+                  } else {
+                    notifySystemAlert('Demo Alert', 'This is a test notification to demonstrate the real-time notification system.', 'medium');
+                  }
+                }}
+                className="shadow-sm"
+              >
+                Test Notifications
               </Button>
               <Link href="/admin/shipments/new">
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
@@ -451,6 +587,12 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer
+        notifications={toasts}
+        onDismiss={dismissToast}
+      />
     </div>
   );
 }
