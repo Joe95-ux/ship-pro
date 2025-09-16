@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { 
@@ -77,6 +77,7 @@ export default function DashboardPage() {
   });
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const loadDataRef = useRef<(() => Promise<void>) | null>(null);
 
   // Notification system
   const {
@@ -141,26 +142,27 @@ export default function DashboardPage() {
     }
   }, [dateRange, filters, currentPage]);
 
-  const debouncedLoadData = useCallback(() => {
-    // Clear existing timeout
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout);
-    }
-    
-    // Set new timeout
-    const timeout = setTimeout(() => {
-      if (user?.publicMetadata.role === 'admin') {
-        loadDashboardData();
-      }
-    }, 500); // 500ms debounce
-    
-    setDebounceTimeout(timeout);
-  }, [debounceTimeout, user, loadDashboardData]);
+  // Update the ref whenever loadDashboardData changes
+  useEffect(() => {
+    loadDataRef.current = loadDashboardData;
+  }, [loadDashboardData]);
 
   // Load data when user changes, page changes, or filters change
   useEffect(() => {
     if (user?.publicMetadata.role === 'admin') {
-      debouncedLoadData();
+      // Clear existing timeout
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+      }
+      
+      // Set new timeout
+      const timeout = setTimeout(() => {
+        if (loadDataRef.current) {
+          loadDataRef.current();
+        }
+      }, 500); // 500ms debounce
+      
+      setDebounceTimeout(timeout);
     }
     
     // Cleanup timeout on unmount
@@ -169,7 +171,7 @@ export default function DashboardPage() {
         clearTimeout(debounceTimeout);
       }
     };
-  }, [user, currentPage, filters.status, filters.search, filters.service, filters.dateFrom, filters.dateTo, debounceTimeout, debouncedLoadData]);
+  }, [user, currentPage, filters.status, filters.search, filters.service, filters.dateFrom, filters.dateTo, debounceTimeout]);
 
   // Demo notifications for testing (remove in production)
   useEffect(() => {
@@ -233,7 +235,9 @@ export default function DashboardPage() {
       try {
         await bulkDeleteShipments(selectedShipments);
         setSelectedShipments([]);
-        loadDashboardData();
+        if (loadDataRef.current) {
+          loadDataRef.current();
+        }
         
         // Notify about bulk deletion
         notifySystemAlert(
