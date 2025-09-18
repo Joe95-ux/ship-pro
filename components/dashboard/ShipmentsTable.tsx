@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { 
-  Search, 
-  Filter, 
   MoreHorizontal, 
   Eye, 
   Edit, 
@@ -12,14 +10,14 @@ import {
   Receipt,
   ChevronLeft,
   ChevronRight,
-  Package,
-  ChevronDown
+  Package
 } from "lucide-react";
+import { AdvancedFilters, AdvancedFilters as AdvancedFiltersType } from "./AdvancedFilters";
+import { QuickFilters } from "./QuickFilters";
+import { SearchSuggestions } from "./SearchSuggestions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   DropdownMenu, 
@@ -28,7 +26,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShipmentListItem } from "@/lib/types";
 import { deleteShipment, bulkDeleteShipments } from "@/lib/dashboard-actions";
 import Link from "next/link";
@@ -68,7 +65,65 @@ export function ShipmentsTable({
   onPageChange,
   isLoading
 }: ShipmentsTableProps) {
-  const [showFilters, setShowFilters] = useState(false);
+  const [savedFilters, setSavedFilters] = useState<Array<{ name: string; filters: AdvancedFiltersType }>>([]);
+  
+  // Convert basic filters to advanced filters format
+  const advancedFilters: AdvancedFiltersType = {
+    search: filters.search,
+    status: filters.status,
+    service: filters.service,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    priceRange: { min: '', max: '' },
+    weightRange: { min: '', max: '' },
+    shipmentTypes: [],
+    paymentModes: [],
+    priority: 'all',
+    deliveryTimeframe: 'all',
+    originCountry: '',
+    destinationCountry: '',
+    senderName: '',
+    receiverName: '',
+    trackingNumber: '',
+    savedFilterName: ''
+  };
+
+  const handleAdvancedFiltersChange = (newFilters: AdvancedFiltersType) => {
+    // Convert advanced filters back to basic filters
+    setFilters({
+      search: newFilters.search,
+      status: newFilters.status,
+      service: newFilters.service,
+      dateFrom: newFilters.dateFrom,
+      dateTo: newFilters.dateTo
+    });
+  };
+
+  const handleSaveFilter = (name: string, filters: AdvancedFiltersType) => {
+    setSavedFilters(prev => [...prev, { name, filters }]);
+  };
+
+  const handleLoadFilter = (name: string) => {
+    const savedFilter = savedFilters.find(f => f.name === name);
+    if (savedFilter) {
+      handleAdvancedFiltersChange(savedFilter.filters);
+    }
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      status: 'all',
+      search: '',
+      dateFrom: '',
+      dateTo: '',
+      service: 'all'
+    });
+  };
+
+  const handleQuickFilter = (quickFilters: Partial<AdvancedFiltersType>) => {
+    const updatedFilters = { ...advancedFilters, ...quickFilters };
+    handleAdvancedFiltersChange(updatedFilters);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -124,39 +179,35 @@ export function ShipmentsTable({
     }
   };
 
-  const statusTabs = [
-    { value: "all", label: "All Shipments" },
-    { value: "DELIVERED", label: "Delivered" },
-    { value: "IN_TRANSIT", label: "In transit" },
-    { value: "PENDING", label: "Pending" },
-    { value: "PICKED_UP", label: "Processing" }
-  ];
 
 
   return (
     <div className="space-y-4">
+      {/* Quick Filters */}
+      <QuickFilters
+        onApplyFilter={handleQuickFilter}
+        activeFilters={advancedFilters}
+      />
+
       {/* Search and Filters Row */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search by tracking number, sender, or receiver..."
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              className="pl-10"
-            />
-          </div>
+          <SearchSuggestions
+            value={filters.search}
+            onChange={(value) => setFilters({ ...filters, search: value })}
+            onSearch={(query) => setFilters({ ...filters, search: query })}
+            placeholder="Search by tracking number, sender, or receiver..."
+          />
         </div>
         
-        <Button
-          variant="outline"
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center space-x-2"
-        >
-          <Filter className="h-4 w-4" />
-          <span>Filters</span>
-        </Button>
+        <AdvancedFilters
+          filters={advancedFilters}
+          onFiltersChange={handleAdvancedFiltersChange}
+          onSaveFilter={handleSaveFilter}
+          onLoadFilter={handleLoadFilter}
+          savedFilters={savedFilters}
+          onClearFilters={handleClearFilters}
+        />
 
         {selectedShipments.length > 0 && (
           <Button
@@ -170,41 +221,6 @@ export function ShipmentsTable({
         )}
       </div>
 
-      {/* Advanced Filters */}
-      {showFilters && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Date From</label>
-            <Input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Date To</label>
-            <Input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">Service</label>
-            <Select value={filters.service} onValueChange={(value) => setFilters({ ...filters, service: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Services" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Services</SelectItem>
-                <SelectItem value="express">Express Delivery</SelectItem>
-                <SelectItem value="standard">Standard Delivery</SelectItem>
-                <SelectItem value="economy">Economy Delivery</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      )}
 
       {/* Table */}
       <div className="border rounded-lg overflow-x-auto">
