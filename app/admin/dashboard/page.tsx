@@ -3,23 +3,34 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
-import { 
-  Plus, 
-  Calendar,
-  Download,
-} from "lucide-react";
+import { Plus, Calendar, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Link from "next/link";
 import { DashboardStats, ShipmentListItem } from "@/lib/types";
-import { getDashboardStats, getShipments, bulkDeleteShipments, getAnalyticsData } from "@/lib/dashboard-actions";
+import {
+  getDashboardStats,
+  getShipments,
+  bulkDeleteShipments,
+  getAnalyticsData,
+} from "@/lib/dashboard-actions";
 import { ShipmentsTable } from "@/components/dashboard/ShipmentsTable";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { ShipmentsStatistics } from "@/components/dashboard/ShipmentsStatistics";
 import { TrackingWidget } from "@/components/dashboard/TrackingWidget";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import dynamic from "next/dynamic";
@@ -27,10 +38,12 @@ import { NotificationCenter } from "@/components/ui/notification-center";
 import { ToastContainer } from "@/components/ui/toast-notification";
 import { useNotifications } from "@/hooks/use-notifications";
 
-const WorldMapWidget = dynamic(()=> import("@/components/dashboard/WorldMapWidget"), {
-  ssr: false,
-})
-
+const WorldMapWidget = dynamic(
+  () => import("@/components/dashboard/WorldMapWidget"),
+  {
+    ssr: false,
+  }
+);
 
 // interface AnalyticsData {
 //   totalShipments: number;
@@ -43,7 +56,7 @@ const WorldMapWidget = dynamic(()=> import("@/components/dashboard/WorldMapWidge
 // Function to get appropriate greeting based on time of day
 const getGreeting = () => {
   const hour = new Date().getHours();
-  
+
   if (hour < 12) {
     return "Good Morning";
   } else if (hour < 17) {
@@ -69,13 +82,15 @@ export default function DashboardPage() {
     search: "",
     dateFrom: "",
     dateTo: "",
-    service: "all"
+    service: "all",
   });
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
-    from: new Date(new Date().setDate(new Date().getDate() - 7)),
-    to: new Date()
+    from: new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
+    to: new Date(),
   });
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
   const [isExporting, setIsExporting] = useState(false);
   const loadDataRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -96,47 +111,46 @@ export default function DashboardPage() {
 
   // Check if user is admin
   useEffect(() => {
-    if (isLoaded && (!user || user.publicMetadata.role !== 'admin')) {
-      redirect('/');
+    if (isLoaded && (!user || user.publicMetadata.role !== "admin")) {
+      redirect("/");
     }
   }, [user, isLoaded]);
 
   const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
-      
+
       // Format dates for API calls
-      const dateFrom = format(dateRange.from, 'yyyy-MM-dd');
-      const dateTo = format(dateRange.to, 'yyyy-MM-dd');
-      
+      const dateFrom = format(dateRange.from, "yyyy-MM-dd");
+      const dateTo = format(dateRange.to, "yyyy-MM-dd");
+
       // Load stats and analytics data
       const [statsData] = await Promise.all([
         getDashboardStats(),
-        getAnalyticsData()
+        getAnalyticsData(),
       ]);
-      
+
       setStats(statsData);
       // setAnalyticsData(analyticsData);
-      
+
       // Create updated filters with date range
       const updatedFilters = {
         ...filters,
         dateFrom,
-        dateTo
+        dateTo,
       };
-      
+
       // Load shipments with pagination and date filtering
       const shipmentsData = await getShipments({
         page: currentPage,
         limit: 10,
-        ...updatedFilters
+        ...updatedFilters,
       });
-      
+
       setShipments(shipmentsData.data);
       setTotalPages(shipmentsData.pagination.totalPages);
-      
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      console.error("Failed to load dashboard data:", error);
     } finally {
       setIsLoading(false);
     }
@@ -149,33 +163,42 @@ export default function DashboardPage() {
 
   // Load data when user changes, page changes, or filters change
   useEffect(() => {
-    if (user?.publicMetadata.role === 'admin') {
+    if (user?.publicMetadata.role === "admin") {
       // Clear existing timeout
       if (debounceTimeout) {
         clearTimeout(debounceTimeout);
       }
-      
+
       // Set new timeout
       const timeout = setTimeout(() => {
         if (loadDataRef.current) {
           loadDataRef.current();
         }
       }, 500); // 500ms debounce
-      
+
       setDebounceTimeout(timeout);
     }
-    
+
     // Cleanup timeout on unmount
     return () => {
       if (debounceTimeout) {
         clearTimeout(debounceTimeout);
       }
     };
-  }, [user, currentPage, filters.status, filters.search, filters.service, filters.dateFrom, filters.dateTo, debounceTimeout]);
+  }, [
+    user,
+    currentPage,
+    filters.status,
+    filters.search,
+    filters.service,
+    filters.dateFrom,
+    filters.dateTo,
+    debounceTimeout,
+  ]);
 
   // Demo notifications for testing (remove in production)
   useEffect(() => {
-    if (user?.publicMetadata.role === 'admin' && notifications.length === 0) {
+    if (user?.publicMetadata.role === "admin" && notifications.length === 0) {
       // Add some demo notifications
       setTimeout(() => {
         notifySystemAlert(
@@ -193,17 +216,28 @@ export default function DashboardPage() {
         notifyMaintenance("VH-001", "Truck Alpha", "Oil Change");
       }, 8000);
     }
-  }, [user, notifications.length, notifySystemAlert, notifyShipmentUpdate, notifyMaintenance]);
+  }, [
+    user,
+    notifications.length,
+    notifySystemAlert,
+    notifyShipmentUpdate,
+    notifyMaintenance,
+  ]);
 
   // Performance monitoring - check for alerts when stats change
   useEffect(() => {
-    if (stats && user?.publicMetadata.role === 'admin') {
+    if (stats && user?.publicMetadata.role === "admin") {
       // Check delivery rate
-      const deliveryRate = stats.totalShipments > 0 ? (stats.deliveredShipments / stats.totalShipments) * 100 : 0;
+      const deliveryRate =
+        stats.totalShipments > 0
+          ? (stats.deliveredShipments / stats.totalShipments) * 100
+          : 0;
       if (deliveryRate < 80 && stats.totalShipments > 10) {
         notifySystemAlert(
           "Low Delivery Rate Alert",
-          `Delivery rate is ${deliveryRate.toFixed(1)}%, which is below the 80% threshold. Consider reviewing delayed shipments.`,
+          `Delivery rate is ${deliveryRate.toFixed(
+            1
+          )}%, which is below the 80% threshold. Consider reviewing delayed shipments.`,
           "high"
         );
       }
@@ -230,15 +264,19 @@ export default function DashboardPage() {
 
   const handleBulkDelete = async () => {
     if (selectedShipments.length === 0) return;
-    
-    if (confirm(`Are you sure you want to delete ${selectedShipments.length} shipments?`)) {
+
+    if (
+      confirm(
+        `Are you sure you want to delete ${selectedShipments.length} shipments?`
+      )
+    ) {
       try {
         await bulkDeleteShipments(selectedShipments);
         setSelectedShipments([]);
         if (loadDataRef.current) {
           loadDataRef.current();
         }
-        
+
         // Notify about bulk deletion
         notifySystemAlert(
           "Bulk Deletion Completed",
@@ -246,7 +284,7 @@ export default function DashboardPage() {
           "medium"
         );
       } catch (error) {
-        console.error('Failed to delete shipments:', error);
+        console.error("Failed to delete shipments:", error);
         notifySystemAlert(
           "Deletion Failed",
           "Failed to delete selected shipments. Please try again.",
@@ -258,7 +296,7 @@ export default function DashboardPage() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedShipments(shipments.map(s => s.id));
+      setSelectedShipments(shipments.map((s) => s.id));
     } else {
       setSelectedShipments([]);
     }
@@ -266,20 +304,22 @@ export default function DashboardPage() {
 
   const handleSelectShipment = (shipmentId: string, checked: boolean) => {
     if (checked) {
-      setSelectedShipments(prev => [...prev, shipmentId]);
+      setSelectedShipments((prev) => [...prev, shipmentId]);
     } else {
-      setSelectedShipments(prev => prev.filter(id => id !== shipmentId));
+      setSelectedShipments((prev) => prev.filter((id) => id !== shipmentId));
     }
   };
 
-  const handleDateRangeChange = (range: { from?: Date; to?: Date } | undefined) => {
+  const handleDateRangeChange = (
+    range: { from?: Date; to?: Date } | undefined
+  ) => {
     if (range?.from && range?.to) {
       setDateRange({ from: range.from, to: range.to });
       // Update filters to trigger API call
-      setFilters(prev => ({ 
-        ...prev, 
-        dateFrom: format(range.from!, "yyyy-MM-dd"), 
-        dateTo: format(range.to!, "yyyy-MM-dd") 
+      setFilters((prev) => ({
+        ...prev,
+        dateFrom: format(range.from!, "yyyy-MM-dd"),
+        dateTo: format(range.to!, "yyyy-MM-dd"),
       }));
     }
   };
@@ -289,7 +329,7 @@ export default function DashboardPage() {
       setIsExporting(true);
       // Format dates for export
       if (!dateRange.from || !dateRange.to) {
-        console.error('Date range not set');
+        console.error("Date range not set");
         notifySystemAlert(
           "Export Failed",
           "Date range is not properly set. Please select a valid date range.",
@@ -297,36 +337,36 @@ export default function DashboardPage() {
         );
         return;
       }
-      const dateFrom = format(dateRange.from, 'yyyy-MM-dd');
-      const dateTo = format(dateRange.to, 'yyyy-MM-dd');
-      
+      const dateFrom = format(dateRange.from, "yyyy-MM-dd");
+      const dateTo = format(dateRange.to, "yyyy-MM-dd");
+
       // Create export filters
       const exportFilters = {
         ...filters,
         dateFrom,
-        dateTo
+        dateTo,
       };
-      
+
       // Get all shipments for export (no pagination)
-      const response = await fetch('/api/shipments/export', {
-        method: 'POST',
+      const response = await fetch("/api/shipments/export", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(exportFilters),
       });
-      
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = `shipments-${dateFrom}-to-${dateTo}.csv`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        
+
         // Notify successful export
         notifySystemAlert(
           "Export Completed",
@@ -334,7 +374,7 @@ export default function DashboardPage() {
           "medium"
         );
       } else {
-        console.error('Failed to export CSV');
+        console.error("Failed to export CSV");
         notifySystemAlert(
           "Export Failed",
           "Failed to export shipments data. Please try again.",
@@ -342,7 +382,7 @@ export default function DashboardPage() {
         );
       }
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error("Export failed:", error);
       notifySystemAlert(
         "Export Error",
         "An error occurred while exporting data. Please try again.",
@@ -353,7 +393,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (!isLoaded || !user || user.publicMetadata.role !== 'admin') {
+  if (!isLoaded || !user || user.publicMetadata.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -371,8 +411,12 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h1 className="text-lg font-medium text-gray-700">Hello {user.firstName || 'Admin'}</h1>
-              <p className="text-3xl font-bold text-gray-900">{getGreeting()}</p>
+              <h1 className="text-lg font-medium text-gray-700">
+                Hello {user.firstName || "Admin"}
+              </h1>
+              <p className="text-3xl font-bold text-gray-900">
+                {getGreeting()}
+              </p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               {/* Notification Center */}
@@ -387,9 +431,13 @@ export default function DashboardPage() {
               {/* Date Range Picker */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="justify-start text-left font-normal bg-white shadow-sm">
+                  <Button
+                    variant="outline"
+                    className="justify-start text-left font-normal bg-white shadow-sm"
+                  >
                     <Calendar className="mr-2 h-4 w-4" />
-                    {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd, yyyy")}
+                    {format(dateRange.from, "MMM dd")} -{" "}
+                    {format(dateRange.to, "MMM dd, yyyy")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -398,30 +446,44 @@ export default function DashboardPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDateRangeChange({
-                          from: new Date(new Date().setDate(new Date().getDate() - 7)),
-                          to: new Date()
-                        })}
+                        onClick={() =>
+                          handleDateRangeChange({
+                            from: new Date(
+                              new Date().setDate(new Date().getDate() - 7)
+                            ),
+                            to: new Date(),
+                          })
+                        }
                       >
                         Last 7 days
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDateRangeChange({
-                          from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
-                          to: new Date()
-                        })}
+                        onClick={() =>
+                          handleDateRangeChange({
+                            from: new Date(
+                              new Date().setMonth(new Date().getMonth() - 1)
+                            ),
+                            to: new Date(),
+                          })
+                        }
                       >
                         Last 30 days
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDateRangeChange({
-                          from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                          to: new Date()
-                        })}
+                        onClick={() =>
+                          handleDateRangeChange({
+                            from: new Date(
+                              new Date().getFullYear(),
+                              new Date().getMonth(),
+                              1
+                            ),
+                            to: new Date(),
+                          })
+                        }
                       >
                         This month
                       </Button>
@@ -436,11 +498,11 @@ export default function DashboardPage() {
                   />
                 </PopoverContent>
               </Popover>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="shadow-sm" 
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="shadow-sm"
                 onClick={handleExportCSV}
                 disabled={isExporting}
               >
@@ -449,22 +511,42 @@ export default function DashboardPage() {
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                {isExporting ? 'Exporting...' : 'Export CSV'}
+                {isExporting ? "Exporting..." : "Export CSV"}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   // Simulate a random notification
-                  const types = ['shipment_update', 'maintenance_alert', 'system_alert'];
-                  const randomType = types[Math.floor(Math.random() * types.length)];
-                  
-                  if (randomType === 'shipment_update') {
-                    notifyShipmentUpdate('demo-' + Date.now(), 'DELIVERED', 'TRK' + Math.random().toString().substr(2, 9));
-                  } else if (randomType === 'maintenance_alert') {
-                    notifyMaintenance('VH-' + Math.floor(Math.random() * 100), 'Truck ' + String.fromCharCode(65 + Math.floor(Math.random() * 26)), 'Maintenance Check');
+                  const types = [
+                    "shipment_update",
+                    "maintenance_alert",
+                    "system_alert",
+                  ];
+                  const randomType =
+                    types[Math.floor(Math.random() * types.length)];
+
+                  if (randomType === "shipment_update") {
+                    notifyShipmentUpdate(
+                      "demo-" + Date.now(),
+                      "DELIVERED",
+                      "TRK" + Math.random().toString().substr(2, 9)
+                    );
+                  } else if (randomType === "maintenance_alert") {
+                    notifyMaintenance(
+                      "VH-" + Math.floor(Math.random() * 100),
+                      "Truck " +
+                        String.fromCharCode(
+                          65 + Math.floor(Math.random() * 26)
+                        ),
+                      "Maintenance Check"
+                    );
                   } else {
-                    notifySystemAlert('Demo Alert', 'This is a test notification to demonstrate the real-time notification system.', 'medium');
+                    notifySystemAlert(
+                      "Demo Alert",
+                      "This is a test notification to demonstrate the real-time notification system.",
+                      "medium"
+                    );
                   }
                 }}
                 className="shadow-sm"
@@ -481,19 +563,29 @@ export default function DashboardPage() {
           </div>
         </div>
 
-
-
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-8">
           {/* Column 1: KPI Cards + Shipments Statistics (7/12 width) */}
           <div className="xl:col-span-7 flex flex-col space-y-4">
             {/* Top Half: KPI Cards */}
-            <StatsCards stats={stats || { totalShipments: 0, pendingShipments: 0, inTransitShipments: 0, deliveredShipments: 0, revenue: 0, newContacts: 0 }} isLoading={isLoading} />
-            
+            <StatsCards
+              stats={
+                stats || {
+                  totalShipments: 0,
+                  pendingShipments: 0,
+                  inTransitShipments: 0,
+                  deliveredShipments: 0,
+                  revenue: 0,
+                  newContacts: 0,
+                }
+              }
+              isLoading={isLoading}
+            />
+
             {/* Bottom Half: Shipments Statistics with Tabs */}
             <div className="flex-1">
-              <ShipmentsStatistics 
-                totalDeliveries={stats?.deliveredShipments || 0} 
+              <ShipmentsStatistics
+                totalDeliveries={stats?.deliveredShipments || 0}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
               />
@@ -514,15 +606,21 @@ export default function DashboardPage() {
               <CardHeader className="border-b border-gray-100">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div>
-                    <CardTitle className="text-lg font-semibold text-gray-900">Shipments Activities</CardTitle>
-                    <p className="text-sm text-gray-600">Keep track of recent shipping activity</p>
+                    <CardTitle className="text-lg font-semibold text-gray-900">
+                      Shipments Activities
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">
+                      Keep track of recent shipping activity
+                    </p>
                   </div>
-                  
+
                   {/* Status Tabs - Desktop */}
                   <div className="hidden lg:block">
-                    <Tabs 
-                      value={filters.status} 
-                      onValueChange={(value) => setFilters({ ...filters, status: value })}
+                    <Tabs
+                      value={filters.status}
+                      onValueChange={(value) =>
+                        setFilters({ ...filters, status: value })
+                      }
                       className="w-full"
                     >
                       <TabsList className="grid w-full grid-cols-5">
@@ -537,9 +635,11 @@ export default function DashboardPage() {
 
                   {/* Status Tabs - Tablet */}
                   <div className="hidden md:block lg:hidden">
-                    <Tabs 
-                      value={filters.status} 
-                      onValueChange={(value) => setFilters({ ...filters, status: value })}
+                    <Tabs
+                      value={filters.status}
+                      onValueChange={(value) =>
+                        setFilters({ ...filters, status: value })
+                      }
                       className="w-full"
                     >
                       <TabsList className="grid w-full grid-cols-3">
@@ -552,7 +652,12 @@ export default function DashboardPage() {
 
                   {/* Status Dropdown - Mobile */}
                   <div className="md:hidden">
-                    <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                    <Select
+                      value={filters.status}
+                      onValueChange={(value) =>
+                        setFilters((prev) => ({ ...prev, status: value }))
+                      }
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -568,7 +673,7 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-6">
-                <ShipmentsTable 
+                <ShipmentsTable
                   shipments={shipments}
                   selectedShipments={selectedShipments}
                   onSelectAll={handleSelectAll}
@@ -593,11 +698,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Toast Notifications */}
-      <ToastContainer
-        notifications={toasts}
-        onDismiss={dismissToast}
-      />
+      <ToastContainer notifications={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
-

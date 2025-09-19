@@ -99,7 +99,13 @@ export async function getShipments(params: {
     }
     
     if (service && service !== "all") {
-      where.serviceId = service;
+      // Filter by service name instead of serviceId
+      where.service = {
+        name: {
+          contains: service,
+          mode: "insensitive"
+        }
+      };
     }
 
     // Get shipments with pagination

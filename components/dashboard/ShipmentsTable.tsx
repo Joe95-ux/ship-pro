@@ -118,10 +118,89 @@ export function ShipmentsTable({
       dateTo: '',
       service: 'all'
     });
+    
+    // Also clear the advanced filters state
+    const clearedAdvancedFilters: AdvancedFiltersType = {
+      search: '',
+      status: 'all',
+      service: 'all',
+      dateFrom: '',
+      dateTo: '',
+      priceRange: { min: '', max: '' },
+      weightRange: { min: '', max: '' },
+      shipmentTypes: [],
+      paymentModes: [],
+      priority: 'all',
+      deliveryTimeframe: 'all',
+      originCountry: '',
+      destinationCountry: '',
+      senderName: '',
+      receiverName: '',
+      trackingNumber: '',
+      savedFilterName: ''
+    };
+    
+    handleAdvancedFiltersChange(clearedAdvancedFilters);
   };
 
   const handleQuickFilter = (quickFilters: Partial<AdvancedFiltersType>) => {
     const updatedFilters = { ...advancedFilters, ...quickFilters };
+    handleAdvancedFiltersChange(updatedFilters);
+  };
+
+  const handleRemoveQuickFilter = (quickFilters: Partial<AdvancedFiltersType>) => {
+    const updatedFilters = { ...advancedFilters };
+    
+    // Remove the specific filter properties
+    if (quickFilters.shipmentTypes) {
+      updatedFilters.shipmentTypes = [];
+    }
+    if (quickFilters.paymentModes) {
+      updatedFilters.paymentModes = [];
+    }
+    if (quickFilters.priceRange) {
+      updatedFilters.priceRange = { min: '', max: '' };
+    }
+    if (quickFilters.weightRange) {
+      updatedFilters.weightRange = { min: '', max: '' };
+    }
+    if (quickFilters.status) {
+      updatedFilters.status = 'all';
+    }
+    if (quickFilters.service) {
+      updatedFilters.service = 'all';
+    }
+    if (quickFilters.priority) {
+      updatedFilters.priority = 'all';
+    }
+    if (quickFilters.deliveryTimeframe) {
+      updatedFilters.deliveryTimeframe = 'all';
+    }
+    if (quickFilters.search) {
+      updatedFilters.search = '';
+    }
+    if (quickFilters.dateFrom) {
+      updatedFilters.dateFrom = '';
+    }
+    if (quickFilters.dateTo) {
+      updatedFilters.dateTo = '';
+    }
+    if (quickFilters.originCountry) {
+      updatedFilters.originCountry = '';
+    }
+    if (quickFilters.destinationCountry) {
+      updatedFilters.destinationCountry = '';
+    }
+    if (quickFilters.senderName) {
+      updatedFilters.senderName = '';
+    }
+    if (quickFilters.receiverName) {
+      updatedFilters.receiverName = '';
+    }
+    if (quickFilters.trackingNumber) {
+      updatedFilters.trackingNumber = '';
+    }
+    
     handleAdvancedFiltersChange(updatedFilters);
   };
 
@@ -186,6 +265,7 @@ export function ShipmentsTable({
       {/* Quick Filters */}
       <QuickFilters
         onApplyFilter={handleQuickFilter}
+        onRemoveFilter={handleRemoveQuickFilter}
         activeFilters={advancedFilters}
       />
 

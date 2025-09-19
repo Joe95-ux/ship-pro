@@ -385,7 +385,7 @@ export function AdvancedFilters({
                           <SelectItem value="next_day">Next Day</SelectItem>
                           <SelectItem value="2_3_days">2-3 Days</SelectItem>
                           <SelectItem value="1_week">1 Week</SelectItem>
-                          <SelectItem value="2_weeks">2 Weeks</</SelectItem>
+                          <SelectItem value="2_weeks">2 Weeks</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
