@@ -17,6 +17,14 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your-google-maps-api-key"
 
 # Application URLs
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# Email Configuration (SMTP)
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="587"
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
+SMTP_FROM_NAME="ShipPro"
+SMTP_FROM_EMAIL="noreply@ship-pro.com"
 ```
 
 ## Google Maps Setup

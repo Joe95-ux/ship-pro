@@ -198,3 +198,27 @@ enum PaymentMode {
   AMEX_GIFT_CARDS
   BANK_TRANSFER
 }
+
+// Email Preferences for Users
+model EmailPreferences {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @unique // Clerk user ID
+  email             String   // User's email address
+  
+  // Notification preferences
+  shipmentCreated   Boolean  @default(true)
+  shipmentPickedUp  Boolean  @default(true)
+  shipmentInTransit Boolean  @default(true)
+  shipmentOutForDelivery Boolean @default(true)
+  shipmentDelivered Boolean  @default(true)
+  shipmentCancelled Boolean  @default(true)
+  
+  // Admin notifications
+  adminNotifications Boolean @default(false) // Only for admin users
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("email_preferences")
+}

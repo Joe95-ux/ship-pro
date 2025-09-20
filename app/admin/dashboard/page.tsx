@@ -192,8 +192,7 @@ export default function DashboardPage() {
     filters.search,
     filters.service,
     filters.dateFrom,
-    filters.dateTo,
-    debounceTimeout,
+    filters.dateTo
   ]);
 
   // Demo notifications for testing (remove in production)

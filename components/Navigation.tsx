@@ -69,6 +69,11 @@ export default function Navigation() {
                         Dashboard
                       </Button>
                     </Link>
+                    <Link href="/admin/email-preferences">
+                      <Button variant="outline" size="sm">
+                        Email
+                      </Button>
+                    </Link>
                   </div>
                 )}
                 <UserButton
@@ -140,6 +145,11 @@ export default function Navigation() {
                     <Link href="/admin/dashboard" onClick={() => setIsOpen(false)}>
                       <Button variant="outline" className="w-full justify-start">
                         Dashboard
+                      </Button>
+                    </Link>
+                    <Link href="/admin/email-preferences" onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full justify-start">
+                        Email Settings
                       </Button>
                     </Link>
                   </div>

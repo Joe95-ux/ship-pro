@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { sendShipmentNotification } from '@/lib/email';
 
 // Get shipment by ID
 export async function GET(
@@ -268,6 +269,28 @@ export async function PATCH(
           },
         },
       });
+
+      // Send email notifications for status change
+      try {
+        const recipients = [
+          { email: finalShipment.senderEmail, name: finalShipment.senderName, type: 'sender' as const },
+          { email: finalShipment.receiverEmail, name: finalShipment.receiverName, type: 'receiver' as const },
+        ];
+
+        // Add admin notifications if there are admin users
+        const adminUsers = await db.emailPreferences.findMany({
+          where: { adminNotifications: true },
+        });
+
+        adminUsers.forEach(admin => {
+          recipients.push({ email: admin.email, name: 'Admin', type: 'admin' as const });
+        });
+
+        await sendShipmentNotification(finalShipment, body.status, recipients);
+      } catch (emailError) {
+        console.error('Failed to send email notifications:', emailError);
+        // Don't fail the shipment update if email fails
+      }
 
       return NextResponse.json({
         message: 'Shipment updated successfully',

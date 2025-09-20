@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { sendShipmentNotification } from '@/lib/email';
 
 // Get all shipments (with filtering and pagination)
 export async function GET(request: NextRequest) {
@@ -171,6 +172,28 @@ export async function POST(request: NextRequest) {
         timestamp: new Date(),
       },
     });
+
+    // Send email notifications for shipment creation
+    try {
+      const recipients = [
+        { email: shipment.senderEmail, name: shipment.senderName, type: 'sender' as const },
+        { email: shipment.receiverEmail, name: shipment.receiverName, type: 'receiver' as const },
+      ];
+
+      // Add admin notifications if there are admin users
+      const adminUsers = await db.emailPreferences.findMany({
+        where: { adminNotifications: true },
+      });
+
+      adminUsers.forEach(admin => {
+        recipients.push({ email: admin.email, name: 'Admin', type: 'admin' as const });
+      });
+
+      await sendShipmentNotification(shipment, 'PENDING', recipients);
+    } catch (emailError) {
+      console.error('Failed to send email notifications:', emailError);
+      // Don't fail the shipment creation if email fails
+    }
 
     return NextResponse.json(
       { 
