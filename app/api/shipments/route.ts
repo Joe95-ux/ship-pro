@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     // Send email notifications for shipment creation
     try {
-      const recipients = [
+      const recipients: { email: string; name: string; type: 'sender' | 'receiver' | 'admin' }[] = [
         { email: shipment.senderEmail, name: shipment.senderName, type: 'sender' as const },
         { email: shipment.receiverEmail, name: shipment.receiverName, type: 'receiver' as const },
       ];

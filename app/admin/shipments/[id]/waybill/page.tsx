@@ -127,7 +127,7 @@ export default function WaybillPage({ params }: WaybillPageProps) {
     }
   }, [shipmentId, user]);
 
-  const formatAddress = (address: any) => {
+  const formatAddress = (address: { street: string; city: string; state: string; postalCode: string; country: string }) => {
     return `${address.street}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
   };
 
