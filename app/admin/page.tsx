@@ -63,6 +63,7 @@ export default function AdminDashboard() {
           shipmentType: shipment.shipmentType,
           paymentMode: shipment.paymentMode,
           estimatedDelivery: new Date(shipment.estimatedDelivery || shipment.createdAt),
+          estimatedCost: shipment.estimatedCost,
           createdAt: new Date(shipment.createdAt),
           service: { name: shipment.service?.name || 'Unknown Service' }
         })));
